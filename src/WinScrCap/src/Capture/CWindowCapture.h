@@ -16,7 +16,6 @@
 #include "ICapture.h"
 #include "Common/Types.h"
 
-struct SImpl;
 
 /**
  * @class    CWindowCapture
@@ -26,6 +25,8 @@ struct SImpl;
  */
 class CWindowCapture final : public ICapture
 {
+    struct SImpl;
+
 public:
     explicit CWindowCapture(ID3D11Device* pDevice);
     ~CWindowCapture() override;

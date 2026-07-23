@@ -20,8 +20,6 @@
 
 #include "Common/Types.h"
 
-struct SImpl;
-
 /**
  * @class    CVideoEncoder
  * @brief    FFmpeg 기반 H.264/MP4 인코더 클래스
@@ -30,6 +28,8 @@ struct SImpl;
  */
 class CVideoEncoder
 {
+    struct SImpl;
+
 public:
     CVideoEncoder(ID3D11Device* pDevice, ID3D11DeviceContext* pDeviceContext);
     ~CVideoEncoder();

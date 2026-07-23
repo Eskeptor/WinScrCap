@@ -1,5 +1,7 @@
 # WinScrCap
 
+![shot2](./screenshot/shot1.png)
+
 A GPU-accelerated Windows screen recorder built with C++20, DirectX 11, and FFmpeg.  
 Captures monitors or individual windows and encodes to MP4 (H.264) with hardware acceleration.
 
