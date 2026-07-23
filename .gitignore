@@ -427,3 +427,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+/src/WinScrCap/imgui.ini
+
+# FFmpeg 3rdparty 바이너리 및 헤더 제외
+src/WinScrCap/third_party/ffmpeg/include/
+src/WinScrCap/third_party/ffmpeg/lib/
+/src/.vscode
