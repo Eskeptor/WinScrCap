@@ -12,6 +12,7 @@ Captures monitors or individual windows and encodes to MP4 (H.264) with hardware
 ## Features
 
 - **Dual capture sources** — full monitor via DXGI Desktop Duplication, or specific window via Windows Graphics Capture API
+- **Remote capture** — connect to a remote PC running `WinScrCapAgent.exe` over TCP and record its screen from the local machine
 - **GPU zero-copy pipeline** — captured `ID3D11Texture2D` frames go directly to the hardware encoder without touching the CPU
 - **Hardware encoding with automatic fallback**
   - NVENC (NVIDIA) → AMF (AMD) → QuickSync (Intel) → Windows Media Foundation H.264 (software fallback)
@@ -30,8 +31,10 @@ Captures monitors or individual windows and encodes to MP4 (H.264) with hardware
 | UI | [Dear ImGui](https://github.com/ocornut/imgui) + DirectX 11 backend |
 | Monitor capture | DXGI Desktop Duplication (`IDXGIOutputDuplication`) |
 | Window capture | Windows Graphics Capture API (WinRT COM) |
+| Remote capture | Custom TCP binary protocol + FFmpeg H.264 encode/decode |
 | Encoding / Muxing | [FFmpeg](https://ffmpeg.org/) LGPL build (H.264, MP4) |
 | Hardware encoding | NVENC / AMF / QuickSync / h264_mf fallback |
+| Authentication | SHA-256 challenge-response (Windows CNG `bcrypt.lib`) |
 | Minimum Windows | Windows 10 1803+ |
 
 ---
@@ -47,6 +50,21 @@ DXGI Duplication ──► ID3D11Texture2D (VRAM) ──► D3D11VA Context ─�
                                                          Staging Buffer ──► CPU ──► h264_mf
 ```
 
+### Remote Capture Pipeline
+
+```
+[Remote PC]  WinScrCapAgent.exe
+               DXGI Duplication → Staging → NV12 → FFmpeg H.264 encode
+                                                           │  TCP (custom binary protocol)
+[Local PC]   WinScrCap.exe                                ▼
+               CNetworkCapture ← FFmpeg H.264 decode ← recv
+                      │  CPU upload
+                      ▼
+               ID3D11Texture2D → CCaptureManager → CVideoEncoder → MP4
+```
+
+> GPU zero-copy is not available for remote frames — network transit requires a CPU→D3D11 upload on the receiving side.
+
 ### Threading Model
 
 | Thread | Responsibility |
@@ -60,25 +78,37 @@ DXGI Duplication ──► ID3D11Texture2D (VRAM) ──► D3D11VA Context ─�
 ```
 WinScrCap/
 ├── WinScrCap.sln
-└── WinScrCap/
-    ├── src/
-    │   ├── main.cpp
-    │   ├── Application/
-    │   │   └── CApplication.h/.cpp      ← DX11 device + main loop
-    │   ├── Capture/
-    │   │   ├── ICapture.h               ← Pure virtual interface
-    │   │   ├── CScreenCapture.h/.cpp    ← DXGI Desktop Duplication
-    │   │   ├── CWindowCapture.h/.cpp    ← Windows Graphics Capture API
-    │   │   └── CCaptureManager.h/.cpp   ← Thread + frame queue + FPS control
-    │   ├── Encoder/
-    │   │   └── CVideoEncoder.h/.cpp     ← FFmpeg HW/SW encoder + MP4 muxer
-    │   ├── UI/
-    │   │   └── CMainWindow.h/.cpp       ← ImGui layout
-    │   └── Common/
-    │       └── Types.h                  ← SFrameData, enums
-    └── third_party/
-        ├── imgui/                        ← ImGui source (included directly)
-        └── ffmpeg/                       ← Pre-built LGPL binaries
+├── WinScrCap/
+│   ├── src/
+│   │   ├── main.cpp
+│   │   ├── Application/
+│   │   │   └── CApplication.h/.cpp      ← DX11 device + main loop
+│   │   ├── Capture/
+│   │   │   ├── ICapture.h               ← Pure virtual interface
+│   │   │   ├── CScreenCapture.h/.cpp    ← DXGI Desktop Duplication
+│   │   │   ├── CWindowCapture.h/.cpp    ← Windows Graphics Capture API
+│   │   │   ├── CNetworkCapture.h/.cpp   ← TCP client + H.264 decode
+│   │   │   └── CCaptureManager.h/.cpp   ← Thread + frame queue + FPS control
+│   │   ├── Encoder/
+│   │   │   └── CVideoEncoder.h/.cpp     ← FFmpeg HW/SW encoder + MP4 muxer
+│   │   ├── UI/
+│   │   │   └── CMainWindow.h/.cpp       ← ImGui layout
+│   │   └── Common/
+│   │       └── Types.h                  ← SFrameData, SRemoteTarget, enums
+│   └── third_party/
+│       ├── imgui/                        ← ImGui source (included directly)
+│       └── ffmpeg/                       ← Pre-built LGPL binaries
+└── WinScrCapAgent/
+    └── src/
+        ├── main.cpp                      ← WinMain, tray icon, message loop
+        ├── Agent/
+        │   ├── CAgentCapture.h/.cpp      ← DXGI capture + CPU staging
+        │   ├── CAgentEncoder.h/.cpp      ← FFmpeg H.264 encoder (low-latency)
+        │   └── CAgentServer.h/.cpp       ← TCP server + auth + send loop
+        ├── UI/
+        │   └── CAgentWindow.h/.cpp       ← ImGui status window + settings modal
+        └── Common/
+            └── AgentConfig.h/.cpp        ← SAgentConfig + INI file I/O
 ```
 
 ---
@@ -107,11 +137,36 @@ WinScrCap/
 ## Usage
 
 1. Launch `WinScrCap.exe`
-2. Select a capture source — **Monitor** (from the detected list) or **Window** (by HWND)
+2. Select a capture source — **Monitor**, **Window**, or **Remote**
+   - For **Remote**: enter the agent host/port/password and click **Connect**
 3. Configure encoding settings: FPS, quality (CRF / bitrate), output file path
 4. Optionally enable **Split Recording** and set the interval (minutes)
 5. Click **Record** — a live preview appears while recording
 6. Click **Stop** to finalize and write the MP4 file
+
+### Running the Agent (for Remote Capture)
+
+1. Copy `WinScrCapAgent.exe` (and FFmpeg DLLs) to the remote PC
+2. Launch it — a status window and tray icon appear
+3. Open **Settings** to configure port, password, FPS, CRF, and monitor index
+4. The agent listens for an incoming connection from WinScrCap
+
+---
+
+## Remote Capture Protocol
+
+- **Transport**: TCP (Winsock2, IPv4/IPv6), one client at a time
+- **Auth**: SHA-256 challenge-response — server sends a random 16-byte nonce, client replies with `SHA256(password + nonce)`; empty password skips auth
+- **Frame packet**: `[4B magic "FRAM"] [4B payload size] [8B timestamp µs] [H.264 NAL units]`
+- **Control packet**: `[4B magic "CTRL"] [1B type: 0x01=Ping 0x02=Pong 0x03=Stop]`
+- **Security note**: no TLS — intended for LAN or VPN use only
+
+### TODO — Phase R4 (not yet implemented)
+
+- [ ] Automatic reconnect and recording resume after network drop
+- [ ] Ping/Pong watchdog with configurable timeout (currently 10 s hard-coded)
+- [ ] Packet magic validation to guard against stream corruption
+- [ ] Agent-side DX11 debug layer resource leak audit
 
 ---
 

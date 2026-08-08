@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="$(SolutionDir)WinScrCap\third_party\imgui\imgui.cpp">
+      <Filter>Third Party\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="$(SolutionDir)WinScrCap\third_party\imgui\imgui_draw.cpp">
+      <Filter>Third Party\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="$(SolutionDir)WinScrCap\third_party\imgui\backends\imgui_impl_dx11.cpp">
+      <Filter>Third Party\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="$(SolutionDir)WinScrCap\third_party\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>Third Party\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="$(SolutionDir)WinScrCap\third_party\imgui\imgui_tables.cpp">
+      <Filter>Third Party\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="$(SolutionDir)WinScrCap\third_party\imgui\imgui_widgets.cpp">
+      <Filter>Third Party\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Agent\CAgentCapture.cpp">
+      <Filter>Capture</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Agent\CAgentEncoder.cpp">
+      <Filter>Capture</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Common\AgentConfig.cpp">
+      <Filter>Config</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UI\CAgentWindow.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Agent\CAgentServer.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Agent\CAgentCapture.h">
+      <Filter>Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Agent\CAgentEncoder.h">
+      <Filter>Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Common\AgentConfig.h">
+      <Filter>Config</Filter>
+    </ClInclude>
+    <ClInclude Include="src\UI\CAgentWindow.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Agent\CAgentServer.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Third Party">
+      <UniqueIdentifier>{c0d65d84-f605-4b3a-9180-304ad0511239}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Third Party\ImGui">
+      <UniqueIdentifier>{b1b61d2b-afe7-423e-ab6d-cdff0d4d180d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Capture">
+      <UniqueIdentifier>{7e5de73b-4bf7-474c-88ef-06d689ff005e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Config">
+      <UniqueIdentifier>{ccf45c43-b80d-436d-a1d5-a1413d62e37d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="UI">
+      <UniqueIdentifier>{9b113b8d-d7d1-4875-9374-55b64750e5f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Server">
+      <UniqueIdentifier>{4e30b482-e4a6-463b-a13f-f4be711a76ba}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

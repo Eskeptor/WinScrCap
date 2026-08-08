@@ -1,7 +1,7 @@
 /**
  * @file         CCaptureManager.cpp
  * @author       eskeptor (yc.jeon)
- * @date         2026-07-23
+ * @date         2026-08-08
  * @version      1.0.0
  */
 
@@ -13,6 +13,7 @@
 #include "CCaptureManager.h"
 #include "CScreenCapture.h"
 #include "CWindowCapture.h"
+#include "CNetworkCapture.h"
 #include "../Encoder/CVideoEncoder.h"
 
 CCaptureManager::CCaptureManager(ID3D11Device* pDevice, ID3D11DeviceContext* pDeviceContext)
@@ -25,6 +26,7 @@ CCaptureManager::CCaptureManager(ID3D11Device* pDevice, ID3D11DeviceContext* pDe
     , m_nPreviewHeight(0)
     , m_bFirstEncodeFrame(true)
     , m_eRecordState(eRecordState::Idle)
+    , m_dPausedDuration{}
 {
     assert(pDevice != nullptr);
     assert(pDeviceContext != nullptr);
@@ -84,6 +86,45 @@ bool CCaptureManager::StartWindowCapture(HWND hWnd)
 
     m_pActiveCapture = m_cWindowCapture.get();
     return true;
+}
+
+bool CCaptureManager::StartNetworkCapture(const SRemoteTarget& stTarget)
+{
+    StopCapture();
+
+    if (m_cNetworkCapture == nullptr)
+    {
+        m_cNetworkCapture = std::make_unique<CNetworkCapture>(m_pDevice, m_pDeviceContext);
+        m_cNetworkCapture->Initialize();
+    }
+
+    m_cNetworkCapture->InitializeRemote(stTarget);
+    if (!m_cNetworkCapture->StartCapture())
+    {
+        return false;
+    }
+
+    m_pActiveCapture = m_cNetworkCapture.get();
+    return true;
+}
+
+std::string CCaptureManager::GetNetworkCaptureStatus() const
+{
+    if (m_cNetworkCapture == nullptr)
+    {
+        return "Not initialized";
+    }
+    return m_cNetworkCapture->GetStatusString();
+}
+
+bool CCaptureManager::IsNetworkConnected() const
+{
+    if (m_cNetworkCapture == nullptr)
+    {
+        return false;
+    }
+    return m_cNetworkCapture->IsCapturing() &&
+        m_cNetworkCapture->GetRemoteWidth() > 0;
 }
 
 void CCaptureManager::StopCapture()

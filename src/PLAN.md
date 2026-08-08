@@ -268,6 +268,264 @@ pure virtual: Initialize(), StartCapture(), StopCapture(), AcquireFrame(), Relea
 
 ---
 
+## 원격 캡처 기능 (Remote Capture — 방안 A: 에이전트 직접 통신)
+
+### 개요
+원격 PC에 경량 에이전트(`WinScrCapAgent.exe`)를 설치하고, 기존 WinScrCap에서 네트워크로 직접 연결해 원격 화면을 녹화한다.  
+기존 `ICapture` 인터페이스에 `CNetworkCapture`를 추가하는 방식으로 확장 — 기존 로컬 캡처 코드는 무변경.
+
+---
+
+### 전체 시스템 구성도
+```
+[원격 PC]  WinScrCapAgent.exe
+              DXGI Duplication
+                    │ ID3D11Texture2D → NV12 변환 (CPU Staging)
+                    │ FFmpeg h264_mf / HW 인코딩 (저지연, 고품질 CRF)
+                    │ H.264 NAL 유닛
+                    ▼
+              CAgentServer (TCP Listen, Winsock2)
+                    │ 커스텀 바이너리 프로토콜
+                    ▼ (LAN / VPN)
+[이 PC]    WinScrCap.exe
+              CNetworkCapture : ICapture
+                    │ TCP 수신 → FFmpeg H.264 디코딩
+                    │ AVFrame(NV12) → ID3D11Texture2D CPU 업로드
+                    ▼
+              CCaptureManager → CVideoEncoder → MP4 저장
+```
+
+> **GPU zero-copy 불가**: 원격 프레임은 네트워크를 거치므로 수신 측에서 CPU→D3D11 업로드가 불가피.  
+> 이중 인코딩(에이전트 인코딩 → 전송 → 수신 측 디코딩 → 재인코딩)으로 화질 손실 최소화를 위해 에이전트 측은 고품질(CRF ≤ 18) 설정.
+
+---
+
+### 커스텀 TCP 프로토콜
+
+#### 핸드셰이크
+```
+Client → Server: [4B 매직 "WSCR"] [2B 버전] [32B 인증 토큰(PBKDF2-HMAC-SHA256)]
+Server → Client: [1B 결과 코드] [4B 너비] [4B 높이] [4B FPS]
+```
+
+#### 프레임 패킷 (핸드셰이크 완료 후 반복)
+```
+[4B 매직 "FRAM"] [4B 페이로드 크기] [8B 타임스탬프(μs)] [페이로드: H.264 NAL 유닛]
+```
+
+#### 제어 패킷
+```
+[4B 매직 "CTRL"] [1B 타입: 0x01=Ping, 0x02=Pong, 0x03=Stop]
+```
+
+- **전송 계층**: TCP (Winsock2, IPv4/IPv6)  
+- **보안**: PBKDF2-HMAC-SHA256 인증 토큰 (Windows CNG API — `BCryptDeriveKeyPBKDF2`)  
+- **TLS 없음**: LAN / VPN 전용으로 명시, WAN 사용 시 VPN 필수  
+- **연결 제한**: 에이전트는 동시에 1개 클라이언트만 허용
+
+---
+
+### WinScrCapAgent 설계 (신규 프로젝트)
+
+**프로젝트 타입**: Win32 앱 (ImGui + DX11 UI, 트레이 아이콘 병행)  
+**솔루션**: 기존 `WinScrCap.sln`에 새 프로젝트로 추가
+
+#### 프로젝트 구조
+```
+WinScrCapAgent/
+├── WinScrCapAgent.vcxproj
+└── src/
+    ├── main.cpp                       ← WinMain, 트레이 아이콘 + 메시지 루프
+    ├── Agent/
+    │   ├── CAgentServer.h/.cpp        ← TCP 서버 (Winsock2 Listen/Accept)
+    │   ├── CAgentCapture.h/.cpp       ← DXGI 캡처 (CScreenCapture 로직 재활용)
+    │   └── CAgentEncoder.h/.cpp       ← FFmpeg 경량 인코더 (H.264 고품질)
+    ├── UI/
+    │   └── CAgentWindow.h/.cpp        ← ImGui 메인 창 (메뉴바 + 상태 표시 + 설정 다이얼로그)
+    └── Common/
+        └── AgentConfig.h              ← SAgentConfig (포트, 비밀번호 해시, FPS 등)
+```
+
+#### UI 설계 (`CAgentWindow`)
+
+**창 동작**
+- 창 닫기(X) 버튼 → 창 숨김 + 트레이 아이콘 유지 (종료 아님)
+- 트레이 아이콘 우클릭 메뉴: **열기 / 설정 / 종료** 3가지
+- 트레이 아이콘 더블클릭 → 창 복원
+
+**메인 화면 레이아웃**
+```
+┌─────────────────────────────────────┐
+│ [메뉴] 설정(S)   종료(X)            │  ← ImGui BeginMainMenuBar
+├─────────────────────────────────────┤
+│  WinScrCap Agent  v1.0              │
+│                                     │
+│  ● 포트        : 9201               │
+│  ● FPS         : 30                 │
+│  ● 품질 (CRF)  : 18                 │
+│  ● 모니터      : 0번                │
+│  ● 연결 상태   : 대기 중 / 연결됨   │
+└─────────────────────────────────────┘
+```
+- 현재 INI에서 읽어온 설정값을 읽기 전용으로 표시
+- 연결 상태는 실시간 갱신 (클라이언트 없음 / 연결됨 + 클라이언트 IP 표시)
+
+**설정 다이얼로그** (`ImGui::OpenPopup` 모달)
+- 메뉴 > 설정 또는 트레이 > 설정 클릭 시 오픈
+- 편집 가능한 항목: 포트, 비밀번호(평문 입력 → 저장 시 PBKDF2 해시 변환), FPS, CRF, 모니터 인덱스
+- **저장** 버튼: INI 파일에 기록 + 설정 즉시 반영 (서버 재기동 필요 항목은 안내)
+- **취소** 버튼: 변경 내용 폐기
+
+#### 핵심 클래스
+
+**`SAgentConfig`**
+```
+uint16_t nPort          ← 기본값 9201
+char     szPasswordHash[65]  ← PBKDF2-SHA256 hex (INI 저장)
+int      nFps           ← 전송 FPS (기본 30)
+int      nCrf           ← 인코딩 품질 (기본 18, 낮을수록 고품질)
+int      nMonitorIndex  ← 캡처할 모니터 인덱스
+```
+
+**`CAgentCapture`**
+- `CScreenCapture`와 동일한 DXGI 로직 (코드 공유 또는 복사)
+- `AcquireFrame()` → Staging Buffer → CPU → NV12 변환 → `CAgentEncoder`에 전달
+- 별도 캡처 스레드 (높은 우선순위)
+
+**`CAgentEncoder`**
+- FFmpeg `h264_mf` or HW 인코더 (nvenc → amf → qsv → h264_mf)
+- `EncodeFrame(AVFrame*)` → H.264 NAL 유닛 → `CAgentServer`의 송신 큐에 push
+- 인코딩 스레드 분리
+
+**`CAgentServer`**
+- `WSAStartup` → `socket` → `bind(port)` → `listen` → `accept`
+- 클라이언트 연결 시 핸드셰이크 처리 및 인증 검증
+- 송신 스레드: 큐에서 프레임 패킷 꺼내 `send()`
+- Ping/Pong 워치독 (10초 무응답 시 연결 종료)
+
+#### 설정 파일
+```ini
+; WinScrCapAgent.ini (실행 파일과 같은 디렉터리)
+[Agent]
+Port=9201
+PasswordHash=<PBKDF2-SHA256-hex>
+FPS=30
+CRF=18
+MonitorIndex=0
+```
+
+---
+
+### WinScrCap 변경 사항
+
+#### Types.h 추가
+```cpp
+// eCaptureType에 Remote 추가
+enum class eCaptureType { Monitor, Window, Remote };
+
+struct SRemoteTarget {
+    char  szHost[256];   // IP 또는 호스트명
+    uint16_t nPort;      // 기본 9201
+    char  szPassword[128];
+};
+```
+
+#### 신규 클래스: `CNetworkCapture : ICapture`
+```
+Capture/
+├── CNetworkCapture.h/.cpp   ← TCP 클라이언트 + H.264 디코딩
+```
+
+- `Initialize(SRemoteTarget&)`: Winsock2 connect + 핸드셰이크 + FFmpeg 디코더 초기화
+- `AcquireFrame()`: 수신 큐에서 `AVFrame` 꺼내기 → NV12 → `ID3D11Texture2D` CPU 업로드 → `SFrameData` 반환
+- `ReleaseFrame()`: 텍스처 반환
+- 수신 스레드: TCP 패킷 파싱 → FFmpeg 디코딩 → 프레임 큐 push
+- 재연결 로직: 연결 끊길 경우 3초 간격 자동 재시도
+
+#### UI 변경 (`CMainWindow`)
+
+**Capture Type 라디오 버튼에 Remote 항목 추가**
+```
+Capture Type:  ○ Monitor   ○ Window   ○ Remote
+```
+- 기존 Monitor / Window 선택 시 동작 무변경
+- **Remote 선택 시** 아래 Agent 연결 설정 영역이 활성화됨
+
+**Remote 선택 시 활성화되는 연결 설정 UI**
+```
+┌─ Agent Connection ──────────────────────────┐
+│  Host     [ 192.168.0.10        ]           │
+│  Port     [ 9201 ]                          │
+│  Password [ ************        ]           │
+│                                             │
+│  [  연결  ]   상태: ● 대기 중               │
+│  (연결 후) 해상도: 1920×1080  FPS: 30       │
+└─────────────────────────────────────────────┘
+```
+- 연결 상태: **대기 중 / 연결 중... / 연결됨 (초록) / 오류 (빨강 + 오류 메시지)**
+- 연결됨 상태에서만 녹화 시작 버튼 활성화
+- Remote 선택 시 미리보기 패널 하단에 `"원격 캡처: GPU zero-copy 비활성화"` 안내 문구 표시
+
+---
+
+### Phase별 구현 계획 (원격 캡처)
+
+#### Phase R1: WinScrCapAgent 기반 구축
+1. `WinScrCap.sln`에 `WinScrCapAgent` 프로젝트 추가 (Win32 앱, x64)
+2. FFmpeg/ImGui third_party 공유 참조 설정
+3. `AgentConfig.h` + INI 파일 파서 (`GetPrivateProfileString` 기반)
+4. `CAgentCapture`: DXGI Duplication + Staging Buffer + NV12 변환
+5. `CAgentEncoder`: FFmpeg h264_mf/HW 초기화, NAL 유닛 출력
+6. `CAgentServer`: Winsock2 TCP 서버, 핸드셰이크, 송신 큐
+7. 트레이 아이콘 + 우클릭 메뉴 (시작/중지/종료)
+8. **로컬 테스트**: 127.0.0.1 연결로 WinScrCap ↔ Agent 동작 확인
+
+#### Phase R2: WinScrCap 클라이언트 측 구현
+1. `eCaptureType::Remote` + `SRemoteTarget` 추가 (`Types.h`)
+2. `CNetworkCapture` 구현
+   - Winsock2 TCP connect + 핸드셰이크
+   - 수신 스레드 + FFmpeg H.264 디코더 초기화
+   - `AVFrame` → `ID3D11Texture2D` CPU 업로드
+3. `CCaptureManager`에 Remote 소스 분기 추가
+
+#### Phase R3: UI 연동
+1. `CMainWindow` Remote 탭 (호스트/포트/비밀번호 입력)
+2. 연결 상태 표시 + 재연결 처리
+3. 원격 소스에서 캡처 → 미리보기 → 녹화 → MP4 저장 전체 흐름 검증
+
+#### Phase R4: 안정화
+1. 네트워크 단절 시 자동 재연결 및 녹화 재개 처리
+2. Ping/Pong 워치독 + 타임아웃 처리
+3. 에이전트 측 리소스 누수 점검 (DX11 디버그 레이어)
+4. 패킷 헤더 매직 검증으로 스트림 오염 방어
+
+---
+
+### 원격 캡처 검증 체크리스트
+11. [ ] WinScrCapAgent 빌드 성공 (W4 경고 0개)
+12. [ ] 에이전트 ↔ WinScrCap 127.0.0.1 연결 및 핸드셰이크 성공
+13. [ ] 원격 화면 미리보기 정상 표시 (≥ 15fps, 같은 LAN)
+14. [ ] 원격 소스 → MP4 파일 정상 생성 + 재생 가능
+15. [ ] 잘못된 비밀번호 입력 시 연결 거부 동작
+16. [ ] 네트워크 단절 후 자동 재연결 동작
+17. [ ] 에이전트 종료 시 WinScrCap 측 오류 팝업 표시
+18. [ ] CPU 사용률 (에이전트 측 h264_mf 인코딩 @1080p 30fps) ≤ 30%
+
+---
+
+### 원격 캡처 의존성 추가
+
+| 항목 | 내용 |
+|---|---|
+| 네트워크 | Winsock2 (`ws2_32.lib`) — Windows SDK 포함 |
+| 인증 해시 | Windows CNG (`bcrypt.lib`) — Windows SDK 포함, PBKDF2-HMAC-SHA256 |
+| 에이전트 인코딩 | 기존 FFmpeg LGPL 빌드 재사용 |
+| 설정 파일 | `GetPrivateProfileString` (kernel32) — 별도 라이브러리 불필요 |
+
+> 추가 서드파티 라이브러리 없음 — 기존 의존성만으로 구현 가능.
+
+---
+
 ## 결정 사항 요약
 | 항목 | 결정 |
 |---|---|

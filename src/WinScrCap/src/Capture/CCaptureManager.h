@@ -1,7 +1,7 @@
 /**
  * @file         CCaptureManager.h
  * @author       eskeptor (yc.jeon)
- * @date         2026-07-23
+ * @date         2026-08-08
  * @version      1.0.0
  * @brief        캡처 소스 관리 + D3D11 프리뷰 텍스처/SRV 유지
  * @details      - Update()를 매 프레임 메인 스레드에서 호출해야 함
@@ -23,6 +23,7 @@
 
 class CScreenCapture;
 class CWindowCapture;
+class CNetworkCapture;
 class CVideoEncoder;
 
 /**
@@ -68,6 +69,25 @@ public:
      * @details     메인 스레드에서 반드시 매 프레임 호출해야 한다.
      */
     void Update();
+
+    /**
+     * @brief       원격 에이전트에 연결하여 원격 스크린 캡처를 시작한다.
+     * @param[in]   stTarget        에이전트 연결 정보 (IP, 포트, 비밀번호)
+     * @return      캡처 시작 성공 여부
+     */
+    bool StartNetworkCapture(const SRemoteTarget& stTarget);
+
+    /**
+     * @brief       원격 에이전트 연결 상태 문자열을 반환한다.
+     * @return      상태 설명 문자열
+     */
+    std::string GetNetworkCaptureStatus() const;
+
+    /**
+     * @brief       원격 에이전트에 연결되어 있는지 여부를 반환한다.
+     * @return      연결 중이면 true
+     */
+    bool IsNetworkConnected() const;
 
     /**
      * @brief       창 목록을 다시 열거한다.
@@ -196,6 +216,15 @@ public:
         return m_cWindowCapture.get();
     }
 
+    /**
+     * @brief       내부 CNetworkCapture 인스턴스 포인터를 반환한다.
+     * @return      CNetworkCapture* (소유권 없음)
+     */
+    CNetworkCapture* GetNetworkCapture() const
+    {
+        return m_cNetworkCapture.get();
+    }
+
 private:
     /**
      * @brief       프리뷰용 D3D11 텍스처와 SRV를 생성한다.
@@ -226,9 +255,10 @@ private:
     ID3D11Device* m_pDevice;
     ID3D11DeviceContext* m_pDeviceContext;
 
-    std::unique_ptr<CScreenCapture> m_cScreenCapture;
-    std::unique_ptr<CWindowCapture> m_cWindowCapture;
-    std::unique_ptr<CVideoEncoder> m_cVideoEncoder;
+    std::unique_ptr<CScreenCapture>  m_cScreenCapture;
+    std::unique_ptr<CWindowCapture>  m_cWindowCapture;
+    std::unique_ptr<CNetworkCapture> m_cNetworkCapture;
+    std::unique_ptr<CVideoEncoder>   m_cVideoEncoder;
 
     ICapture* m_pActiveCapture;
 

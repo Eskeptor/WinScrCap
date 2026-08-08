@@ -1,7 +1,7 @@
 /**
  * @file         CMainWindow.cpp
  * @author       eskeptor (yc.jeon)
- * @date         2026-07-23
+ * @date         2026-08-08
  * @version      1.0.0
  */
 
@@ -92,6 +92,9 @@ CMainWindow::CMainWindow(CCaptureManager* pCaptureManager)
     , m_nMainDockID(0)
     , m_bSplitEnabled(false)
     , m_nSplitMinutes(60)
+    , m_arrRemoteHost{ "192.168.0.1" }
+    , m_nRemotePort(9201)
+    , m_arrRemotePassword{}
 {
     assert(pCaptureManager != nullptr);
 }
@@ -184,6 +187,8 @@ void CMainWindow::RenderSourcePanel()
         ImGui::RadioButton("Monitor", &nType, 0);
         ImGui::SameLine();
         ImGui::RadioButton("Window",  &nType, 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("Remote",  &nType, 2);
 
         if (nType != static_cast<int32_t>(m_eCaptureType))
         {
@@ -197,12 +202,76 @@ void CMainWindow::RenderSourcePanel()
         {
             RenderMonitorList();
         }
-        else
+        else if (m_eCaptureType == eCaptureType::Window)
         {
             RenderWindowList();
         }
+        else
+        {
+            RenderRemotePanel();
+        }
     }
     ImGui::End();
+}
+
+void CMainWindow::RenderRemotePanel()
+{
+    ImGui::SeparatorText("Agent Connection");
+
+    ImGui::Text("Host");
+    ImGui::SameLine(80.0f);
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("##RemoteHost", m_arrRemoteHost, sizeof(m_arrRemoteHost));
+
+    ImGui::Text("Port");
+    ImGui::SameLine(80.0f);
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputInt("##RemotePort", &m_nRemotePort, 0, 0);
+    m_nRemotePort = (m_nRemotePort < 1) ? 1 : (m_nRemotePort > 65535) ? 65535 : m_nRemotePort;
+
+    ImGui::Text("Password");
+    ImGui::SameLine(80.0f);
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputText("##RemotePwd", m_arrRemotePassword, sizeof(m_arrRemotePassword),
+        ImGuiInputTextFlags_Password);
+
+    ImGui::Spacing();
+
+    const bool bConnected = m_pCaptureManager->IsNetworkConnected();
+    if (bConnected)
+    {
+        if (ImGui::Button("Disconnect", ImVec2(-1.0f, 0.0f)))
+        {
+            m_pCaptureManager->StopCapture();
+        }
+    }
+    else
+    {
+        if (ImGui::Button("Connect", ImVec2(-1.0f, 0.0f)))
+        {
+            SRemoteTarget stTarget;
+            strncpy_s(stTarget.szHost, m_arrRemoteHost, _TRUNCATE);
+            stTarget.Port = static_cast<uint16_t>(m_nRemotePort);
+            strncpy_s(stTarget.szPassword, m_arrRemotePassword, _TRUNCATE);
+
+            if (!m_pCaptureManager->StartNetworkCapture(stTarget))
+            {
+                ShowError("Failed to start remote capture.\nCheck agent address and try again.");
+            }
+        }
+    }
+
+    ImGui::Spacing();
+
+    std::string strStatus = m_pCaptureManager->GetNetworkCaptureStatus();
+    if (bConnected)
+    {
+        ImGui::TextColored(ImVec4(0.2f, 0.9f, 0.2f, 1.0f), "%s", strStatus.c_str());
+    }
+    else
+    {
+        ImGui::TextDisabled("%s", strStatus.c_str());
+    }
 }
 
 void CMainWindow::RenderPreviewPanel()

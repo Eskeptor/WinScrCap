@@ -64,6 +64,9 @@
     <ClCompile Include="src\Capture\CWindowCapture.cpp">
       <Filter>Capture</Filter>
     </ClCompile>
+    <ClCompile Include="src\Capture\CNetworkCapture.cpp">
+      <Filter>Capture</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Common\Types.h">
@@ -112,6 +115,9 @@
       <Filter>Capture</Filter>
     </ClInclude>
     <ClInclude Include="src\Capture\CWindowCapture.h">
+      <Filter>Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Capture\CNetworkCapture.h">
       <Filter>Capture</Filter>
     </ClInclude>
   </ItemGroup>

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.12.35707.178
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WinScrCap", "WinScrCap\WinScrCap.vcxproj", "{8F7A3B2D-C4E9-4F0A-B8D3-A1E2C4F5D6B7}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "WinScrCapAgent", "WinScrCapAgent\WinScrCapAgent.vcxproj", "{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +17,10 @@ Global
 		{8F7A3B2D-C4E9-4F0A-B8D3-A1E2C4F5D6B7}.Debug|x64.Build.0 = Debug|x64
 		{8F7A3B2D-C4E9-4F0A-B8D3-A1E2C4F5D6B7}.Release|x64.ActiveCfg = Release|x64
 		{8F7A3B2D-C4E9-4F0A-B8D3-A1E2C4F5D6B7}.Release|x64.Build.0 = Release|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}.Debug|x64.Build.0 = Debug|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

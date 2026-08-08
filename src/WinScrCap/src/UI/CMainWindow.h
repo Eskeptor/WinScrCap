@@ -1,7 +1,7 @@
 /**
  * @file         CMainWindow.h
  * @author       eskeptor (yc.jeon)
- * @date         2026-07-23
+ * @date         2026-08-08
  * @version      1.0.0
  * @brief        메인 윈도우 UI 클래스 정의
  */
@@ -72,6 +72,11 @@ private:
     void OpenSaveFileDialog();
 
     /**
+     * @brief       Remote 소스 연결 설정 UI를 렌더링한다.
+     */
+    void RenderRemotePanel();
+
+    /**
      * @brief       오류 메시지 팝업 창을 렌더링한다.
      */
     void RenderErrorPopup();
@@ -108,6 +113,11 @@ private:
     // 분할 녹화 UI 상태
     bool m_bSplitEnabled;
     int32_t m_nSplitMinutes;
+
+    // Remote 연결 UI 상태
+    char m_arrRemoteHost[256];
+    int32_t m_nRemotePort;
+    char m_arrRemotePassword[128];
 
     // DockSpace ID (Reset Layout 버튼에서 슬롯 재배치 시 사용)
     ImGuiID m_nMainDockID;

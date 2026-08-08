@@ -1,7 +1,7 @@
 /**
  * @file         Types.h
  * @author       eskeptor (yc.jeon)
- * @date         2026-07-23
+ * @date         2026-08-08
  * @version      1.0.0
  * @brief        공통 타입 정의
  */
@@ -62,9 +62,19 @@ struct SEncodeConfig
     int32_t FrameRate = 30;                 ///< 목표 프레임 레이트 (fps)
     int32_t BitRate = 8000000;              ///< 목표 비트레이트 (bps, 기본 8 Mbps)
 
-    // ---- 분할 녹화 설정 ----
     bool bSplitEnabled = false;             ///< 분할 녹화 활성화 여부
     int32_t nSplitMinutes = 60;             ///< 분할 간격 (분, 유효 범위 1 ~ 1440)
+};
+
+/**
+ * @struct   SRemoteTarget
+ * @brief    원격 에이전트 연결 대상 정보
+ */
+struct SRemoteTarget
+{
+    char szHost[256] = {};      ///< Agent IP 또는 호스트명
+    uint16_t Port = 9201;       ///< Agent 포트
+    char szPassword[128] = {};  ///< 인증 패스워드 (challenge-response용 평문)
 };
 
 /**
@@ -75,6 +85,7 @@ enum class eCaptureType
 {
     Monitor,                                ///< 모니터 전체 캡처 (DXGI Desktop Duplication)
     Window,                                 ///< 특정 창 캡처 (Windows Graphics Capture API)
+    Remote,                                 ///< 원격 에이전트 캡처 (WinScrCapAgent TCP)
 };
 
 /**

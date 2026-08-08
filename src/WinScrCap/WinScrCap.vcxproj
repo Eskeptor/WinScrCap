@@ -70,7 +70,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)third_party\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;windowsapp.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;windowsapp.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;ws2_32.lib;bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <!-- ================================================================ -->
@@ -95,7 +95,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)third_party\ffmpeg\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;windowsapp.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;windowsapp.lib;avcodec.lib;avformat.lib;avutil.lib;swscale.lib;swresample.lib;ws2_32.lib;bcrypt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>IF EXIST "$(ProjectDir)third_party\ffmpeg\bin\" xcopy /y /d "$(ProjectDir)third_party\ffmpeg\bin\*.dll" "$(OutDir)" &gt;NUL 2&gt;&amp;1</Command>
@@ -110,6 +110,7 @@
     <ClCompile Include="src\Application\CApplication.cpp" />
     <ClCompile Include="src\Capture\CCaptureManager.cpp" />
     <ClCompile Include="src\Capture\CScreenCapture.cpp" />
+    <ClCompile Include="src\Capture\CNetworkCapture.cpp" />
     <ClCompile Include="src\Capture\CWindowCapture.cpp" />
     <ClCompile Include="src\Encoder\CVideoEncoder.cpp" />
     <ClCompile Include="src\UI\CMainWindow.cpp" />
@@ -131,6 +132,7 @@
     <ClInclude Include="src\Capture\ICapture.h" />
     <ClInclude Include="src\Capture\CCaptureManager.h" />
     <ClInclude Include="src\Capture\CScreenCapture.h" />
+    <ClInclude Include="src\Capture\CNetworkCapture.h" />
     <ClInclude Include="src\Capture\CWindowCapture.h" />
     <ClInclude Include="src\Encoder\CVideoEncoder.h" />
     <ClInclude Include="src\UI\CMainWindow.h" />
