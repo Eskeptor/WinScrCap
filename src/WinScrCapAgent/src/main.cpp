@@ -1,7 +1,7 @@
 /**
  * @file         main.cpp
  * @author       eskeptor (yc.jeon)
- * @date         2026-08-08
+ * @date         2026-08-100
  * @version      1.0.0
  */
 
@@ -203,6 +203,15 @@ int WINAPI wWinMain(
         nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, nCreateFlags,
         ARR_FL, ARRAYSIZE(ARR_FL), D3D11_SDK_VERSION,
         &stSCDesc, &pSwapChain, &pDevice, &eFeatureLevel, &pDeviceContext);
+
+    // 멀티스레드 보호 활성화
+    ID3D10Multithread* pThread = nullptr;
+    if (SUCCEEDED(pDeviceContext->QueryInterface(__uuidof(ID3D10Multithread), reinterpret_cast<void**>(&pThread))))
+    {
+        pThread->SetMultithreadProtected(TRUE);
+        pThread->Release();
+        pThread = nullptr;
+    }
 
     if (FAILED(hr))
     {

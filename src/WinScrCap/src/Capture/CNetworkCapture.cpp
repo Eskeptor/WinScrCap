@@ -1,7 +1,7 @@
 /**
  * @file         CNetworkCapture.cpp
  * @author       eskeptor (yc.jeon)
- * @date         2026-08-08
+ * @date         2026-08-10
  * @version      1.0.0
  */
 
@@ -193,6 +193,9 @@ void CNetworkCapture::ThrReceive()
     AVPacket* pPkt = av_packet_alloc();
     AVFrame* pFrm = av_frame_alloc();
     SwsContext* pSwsCtx = nullptr;
+    AVPixelFormat eSwsSrcFmt = AV_PIX_FMT_NONE;
+    int32_t nSwsW = 0;
+    int32_t nSwsH = 0;
 
     std::vector<uint8_t> arrPayload;
     arrPayload.reserve(512 * 1024);
@@ -211,16 +214,16 @@ void CNetworkCapture::ThrReceive()
             m_bConnected = true;
             SetStatus("Connected");
 
-            // SwsContext 생성 (연결 후 해상도가 확정됨)
+            // 실제 디코딩된 프레임의 픽셀 포맷을 확인해야 하므로
+            // SwsContext는 첫 프레임 수신 후 지연 생성한다.
             if (pSwsCtx != nullptr)
             {
                 sws_freeContext(pSwsCtx);
                 pSwsCtx = nullptr;
             }
-            pSwsCtx = sws_getContext(
-                m_nRemoteWidth, m_nRemoteHeight, AV_PIX_FMT_NV12,
-                m_nRemoteWidth, m_nRemoteHeight, AV_PIX_FMT_BGRA,
-                SWS_BILINEAR, nullptr, nullptr, nullptr);
+            eSwsSrcFmt = AV_PIX_FMT_NONE;
+            nSwsW = 0;
+            nSwsH = 0;
         }
 
         // 수신 타임아웃 설정
@@ -302,14 +305,35 @@ void CNetworkCapture::ThrReceive()
 
         while (avcodec_receive_frame(pDecCtx, pFrm) == 0)
         {
+            const int32_t nW = pFrm->width;
+            const int32_t nH = pFrm->height;
+            const AVPixelFormat eFrmFmt = static_cast<AVPixelFormat>(pFrm->format);
+
+            // 디코더의 실제 출력 포맷/해상도가 바뀌면 SwsContext를 재생성한다.
+            if (pSwsCtx == nullptr ||
+                eFrmFmt != eSwsSrcFmt ||
+                nW != nSwsW ||
+                nH != nSwsH)
+            {
+                if (pSwsCtx != nullptr)
+                {
+                    sws_freeContext(pSwsCtx);
+                    pSwsCtx = nullptr;
+                }
+                pSwsCtx = sws_getContext(
+                    nW, nH, eFrmFmt,
+                    nW, nH, AV_PIX_FMT_BGRA,
+                    SWS_BILINEAR, nullptr, nullptr, nullptr);
+                eSwsSrcFmt = eFrmFmt;
+                nSwsW = nW;
+                nSwsH = nH;
+            }
+
             if (pSwsCtx == nullptr)
             {
                 av_frame_unref(pFrm);
                 continue;
             }
-
-            const int32_t nW = pFrm->width;
-            const int32_t nH = pFrm->height;
 
             // BGRA 임시 버퍼
             const int32_t nBGRAStride = nW * 4;

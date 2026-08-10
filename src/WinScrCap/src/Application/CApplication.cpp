@@ -1,7 +1,7 @@
 /**
  * @file         CApplication.cpp
  * @author       eskeptor (yc.jeon)
- * @date         2026-07-23
+ * @date         2026-08-10
  * @version      1.0.0
  */
 
@@ -220,10 +220,17 @@ bool CApplication::InitDirectX()
         &eFeatureLevel,
         &m_pDeviceContext
     );
-
     if (FAILED(hr))
     {
         return false;
+    }
+    // 멀티스레드 보호 활성화
+    ID3D10Multithread* pThread = nullptr;
+    if (SUCCEEDED(m_pDeviceContext->QueryInterface(__uuidof(ID3D10Multithread), reinterpret_cast<void**>(&pThread))))
+    {
+        pThread->SetMultithreadProtected(TRUE);
+        pThread->Release();
+        pThread = nullptr;
     }
 
     CreateRenderTarget();

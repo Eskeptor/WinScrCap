@@ -1,7 +1,7 @@
 /**
  * @file         CMainWindow.cpp
  * @author       eskeptor (yc.jeon)
- * @date         2026-08-08
+ * @date         2026-08-10
  * @version      1.0.0
  */
 
@@ -107,10 +107,12 @@ void CMainWindow::Render()
     RenderControlPanel();
     RenderErrorPopup();   // 오류 팝업은 매 프레임 호출
 
+#ifdef _IMGUI_DEMO
     if (m_bShowImGuiDemo)
     {
         ImGui::ShowDemoWindow(&m_bShowImGuiDemo);
     }
+#endif
 }
 
 void CMainWindow::RenderDockSpace()
@@ -344,7 +346,9 @@ void CMainWindow::RenderControlPanel()
 
         ImGui::Spacing();
         ImGui::Separator();
+#ifdef _IMGUI_DEMO
         ImGui::Checkbox("Show ImGui Demo", &m_bShowImGuiDemo);
+#endif
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset Layout"))
         {
@@ -397,8 +401,7 @@ void CMainWindow::RenderRecordingSettings()
         }
 
         // 프레임 수 + 활성 인코더
-        ImGui::Text(
-            "Frames: %lld   Encoder: %s",
+        ImGui::Text("Frames: %lld   Encoder: %s",
             m_pCaptureManager->GetRecordedFrames(),
             EncoderTypeToStr(m_pCaptureManager->GetActiveEncoderType()));
 
@@ -503,11 +506,11 @@ void CMainWindow::RenderRecordingSettings()
             if (!m_pCaptureManager->StartRecording(stConfig))
             {
                 ShowError(
-                    "녹화 시작에 실패했습니다.\n\n"
-                    "가능한 원인:\n"
-                    "  - FFmpeg DLL 누락 (third_party\\ffmpeg\\bin)\n"
-                    "  - 출력 경로 쓰기 권한 없음\n"
-                    "  - 지원 인코더 없음 (h264_mf 포함)"
+                    "Failed to start recording.\n\n"
+                    "Possible causes:\n"
+                    "  - FFmpeg DLL missing (third_party\\ffmpeg\\bin)\n"
+                    "  - No write permission for the output path\n"
+                    "  - No supported encoder available (including h264_mf)"
                 );
             }
         }
@@ -591,8 +594,7 @@ void CMainWindow::RenderErrorPopup()
         ImGui::TextWrapped("%s", m_strLastError.c_str());
         ImGui::Spacing();
 
-        const float fBtnX = (ImGui::GetContentRegionAvail().x - 80.0f) * 0.5f
-                            + ImGui::GetCursorPosX();
+        const float fBtnX = (ImGui::GetContentRegionAvail().x - 80.0f) * 0.5f + ImGui::GetCursorPosX();
         ImGui::SetCursorPosX(fBtnX);
         if (ImGui::Button("OK", ImVec2(80.0f, 0.0f)))
         {

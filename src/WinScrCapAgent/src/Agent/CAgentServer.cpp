@@ -1,7 +1,7 @@
 /**
  * @file         CAgentServer.cpp
  * @author       eskeptor (yc.jeon)
- * @date         2026-08-08
+ * @date         2026-08-10
  * @version      1.0.0
  */
 
@@ -93,6 +93,12 @@ bool CAgentServer::Initialize(uint16_t nPort, const char* pszPassword, CAgentCap
 
     if (bind(m_hListenSocket, reinterpret_cast<sockaddr*>(&stAddr), sizeof(stAddr)) != 0)
     {
+        // 원인 진단을 위해 에러 코드 출력 (예: WSAEADDRINUSE=10048, WSAEACCES=10013)
+        // const int32_t nErr = WSAGetLastError();
+        // char szBuf[128] = {};
+        // sprintf_s(szBuf, "bind() failed. WSAGetLastError=%d, port=%u\n", nErr, nPort);
+        // OutputDebugStringA(szBuf);
+
         closesocket(m_hListenSocket);
         m_hListenSocket = INVALID_SOCKET;
         WSACleanup();
