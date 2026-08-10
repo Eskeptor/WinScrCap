@@ -235,10 +235,7 @@ void CNetworkCapture::ThrReceive()
         uint32_t nMagic = 0;
         if (!RecvAll(m_hSocket, reinterpret_cast<uint8_t*>(&nMagic), 4))
         {
-            SetStatus("Disconnected (recv error)");
-            closesocket(m_hSocket);
-            m_hSocket = INVALID_SOCKET;
-            m_bConnected = false;
+            Disconnect("Disconnected (recv error)");
             continue;
         }
 
@@ -256,16 +253,16 @@ void CNetworkCapture::ThrReceive()
             }
             else if (nType == CTRL_STOP)
             {
-                SetStatus("Disconnected (server stopped)");
-                closesocket(m_hSocket);
-                m_hSocket = INVALID_SOCKET;
-                m_bConnected = false;
+                Disconnect("Disconnected (server stopped)");
             }
             continue;
         }
 
         if (nMagic != PROTO_MAGIC_FRAME)
         {
+            // 예상치 못한 매직 값 — 스트림 오염으로 간주하고 재연결한다.
+            // (TCP 스트림은 바이트 단위 재동기화가 신뢰할 수 없으므로 연결을 새로 맺는다)
+            Disconnect("Stream corrupted, reconnecting...");
             continue;
         }
 
@@ -274,23 +271,27 @@ void CNetworkCapture::ThrReceive()
         int64_t nTs = 0;
         if (!RecvAll(m_hSocket, reinterpret_cast<uint8_t*>(&nSize), 4))
         {
-            break;
+            Disconnect("Disconnected (recv error)");
+            continue;
         }
         if (!RecvAll(m_hSocket, reinterpret_cast<uint8_t*>(&nTs), 8))
         {
-            break;
+            Disconnect("Disconnected (recv error)");
+            continue;
         }
 
         if (nSize <= 0 ||
             nSize > MAX_PACKET_SIZE)
         {
-            break;
+            Disconnect("Stream corrupted, reconnecting...");
+            continue;
         }
 
         arrPayload.resize(static_cast<size_t>(nSize));
         if (!RecvAll(m_hSocket, arrPayload.data(), nSize))
         {
-            break;
+            Disconnect("Disconnected (recv error)");
+            continue;
         }
 
         // FFmpeg 디코딩
@@ -555,6 +556,17 @@ bool CNetworkCapture::UploadBGRAToTexture(const uint8_t* pBGRA, int32_t nWidth, 
     m_pDeviceContext->Unmap(m_pStagingTex, 0);
     m_pDeviceContext->CopyResource(m_pGpuTex, m_pStagingTex);
     return true;
+}
+
+void CNetworkCapture::Disconnect(const char* pszReason)
+{
+    SetStatus(pszReason);
+    if (m_hSocket != INVALID_SOCKET)
+    {
+        closesocket(m_hSocket);
+        m_hSocket = INVALID_SOCKET;
+    }
+    m_bConnected = false;
 }
 
 void CNetworkCapture::SetStatus(const char* pszMsg)

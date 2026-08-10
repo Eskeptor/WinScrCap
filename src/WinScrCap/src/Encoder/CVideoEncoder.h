@@ -3,12 +3,12 @@
  * @author       eskeptor (yc.jeon)
  * @date         2026-07-23
  * @version      1.0.0
- * @brief        FFmpeg 기반 H.264/MP4 인코더 클래스 정의
- * @details      - NVENC, AMF, QSV, h264_mf 등 다양한 인코더 지원
- *               - D3D11 BGRA → 스테이징 버퍼 → NV12 → 인코더 경로
- *               - third_party\ffmpeg\include\  (헤더)
- *               - third_party\ffmpeg\lib\      (.lib 파일)
- *               - third_party\ffmpeg\bin\      (.dll 파일, 실행 시 필요)
+ * @brief        Definition of the FFmpeg-based H.264/MP4 encoder class
+ * @details      - Supports multiple encoders such as NVENC, AMF, QSV, h264_mf
+ *               - Path: D3D11 BGRA -> staging buffer -> NV12 -> encoder
+ *               - third_party\ffmpeg\include\  (headers)
+ *               - third_party\ffmpeg\lib\      (.lib files)
+ *               - third_party\ffmpeg\bin\      (.dll files, required at runtime)
  */
 
 #pragma once
@@ -22,9 +22,9 @@
 
 /**
  * @class    CVideoEncoder
- * @brief    FFmpeg 기반 H.264/MP4 인코더 클래스
- * @details  - NVENC → AMF → QSV → h264_mf 순서로 인코더를 자동 선택한다.
- *           - D3D11 BGRA 텍스체를 스테이징 버퍼를 통해 NV12 로 변환 후 인코딩한다.
+ * @brief    Definition of the FFmpeg-based H.264/MP4 encoder class
+ * @details  - Automatically selects the encoder in the order NVENC → AMF → QSV → h264_mf.
+ *           - Converts D3D11 BGRA textures to NV12 via a staging buffer before encoding.
  */
 class CVideoEncoder
 {
@@ -35,29 +35,29 @@ public:
     ~CVideoEncoder();
 
     /**
-     * @brief       인코더를 열고 MP4 출력 파일을 준비한다.
-     * @details     HW 인코더 (NVENC/AMF/QSV) 초기화를 시도하고, 실패 시 h264_mf 로 폴백한다.
-     * @param[in]   stConfig        인코더 및 출력 파일 설정
-     * @return      초기화 성공 여부
+     * @brief       Opens the encoder and prepares the MP4 output file.
+     * @details     Attempts to initialize an HW encoder (NVENC/AMF/QSV), falling back to h264_mf on failure.
+     * @param[in]   stConfig        Encoder and output file settings
+     * @return      Whether initialization succeeded
      */
     bool Open(const SEncodeConfig& stConfig);
 
     /**
-     * @brief       D3D11 텍스처를 인코더에 제출한다.
-     * @details     텍스처를 스테이징 버퍼로 복사한 뒤 NV12 변환 → FFmpeg AVFrame 제출 순으로 처리한다.
-     * @param[in]   pTexture        인코딩할 D3D11 텍스처 포인터
-     * @return      프레임 제출 성공 여부
+     * @brief       Submits a D3D11 texture to the encoder.
+     * @details     Copies the texture to a staging buffer, then processes it in order: NV12 conversion -> FFmpeg AVFrame submission.
+     * @param[in]   pTexture        Pointer to the D3D11 texture to encode
+     * @return      Whether the frame was submitted successfully
      */
     bool SubmitFrame(ID3D11Texture2D* pTexture);
 
     /**
-     * @brief       인코더를 닫고 MP4 트레일러를 기록한 뒤 모든 리소스를 해제한다.
+     * @brief       Closes the encoder, writes the MP4 trailer, and releases all resources.
      */
     void Close();
 
     /**
-     * @brief       인코더가 열려 있는지(MP4 파일 기록 중) 여부를 반환한다.
-     * @return      열려 있으면 true
+     * @brief       Returns whether the encoder is open (currently writing an MP4 file).
+     * @return      true if open
      */
     bool IsOpen() const
     {
@@ -65,8 +65,8 @@ public:
     }
 
     /**
-     * @brief       현재 활성화된 인코더 유형을 반환한다.
-     * @return      eEncoderType 열거값
+     * @brief       Returns the currently active encoder type.
+     * @return      eEncoderType enum value
      */
     eEncoderType GetActiveEncoder() const
     {
@@ -74,8 +74,8 @@ public:
     }
 
     /**
-     * @brief       현재까지 인코딩된 수 프레임 수를 반환한다.
-     * @return      프레임 수
+     * @brief       Returns the number of frames encoded so far.
+     * @return      Frame count
      */
     int64_t GetFrameCount() const
     {
@@ -84,38 +84,38 @@ public:
 
 private:
     /**
-     * @brief       지정된 코덱 이름으로 FFmpeg 인코더 초기화를 시도한다.
-     * @param[in]   pszCodecName    FFmpeg 코덱 이름 (예: "h264_nvenc")
-     * @param[in]   stConfig        인코더 설정
-     * @return      초기화 성공 여부
+     * @brief       Attempts to initialize the FFmpeg encoder with the specified codec name.
+     * @param[in]   pszCodecName    FFmpeg codec name (e.g. "h264_nvenc")
+     * @param[in]   stConfig        Encoder settings
+     * @return      Whether initialization succeeded
      */
     bool TryOpenEncoder(const char* pszCodecName, const SEncodeConfig& stConfig);
 
     /**
-     * @brief       CPU 매핑용 스테이징 텍스처를 생성한다.
-     * @param[in]   nWidth          텍스처 너비 (픽셀)
-     * @param[in]   nHeight         텍스처 높이 (픽셀)
-     * @return      생성 성공 여부
+     * @brief       Creates the staging texture used for CPU mapping.
+     * @param[in]   nWidth          Texture width (pixels)
+     * @param[in]   nHeight         Texture height (pixels)
+     * @return      Whether creation succeeded
      */
     bool CreateStagingTexture(int32_t nWidth, int32_t nHeight);
 
     /**
-     * @brief       변환된 AVFrame 을 FFmpeg 인코더에 전송한다.
-     * @param[in]   pFrame          전송할 AVFrame 포인터
-     * @return      전송 성공 여부
+     * @brief       Sends the converted AVFrame to the FFmpeg encoder.
+     * @param[in]   pFrame          Pointer to the AVFrame to send
+     * @return      Whether the frame was sent successfully
      */
     bool SendAvFrame(struct AVFrame* pFrame);
 
 private:
-    std::unique_ptr<SImpl> m_stImpl;
+    std::unique_ptr<SImpl> m_stImpl;                 /**< Opaque implementation details (FFmpeg contexts) */
 
-    ID3D11Device* m_pDevice;
-    ID3D11DeviceContext* m_pDeviceContext;
-    ID3D11Texture2D* m_pStagingTex;
+    ID3D11Device* m_pDevice;                         /**< DirectX 11 device (not owned) */
+    ID3D11DeviceContext* m_pDeviceContext;           /**< DirectX 11 device context (not owned) */
+    ID3D11Texture2D* m_pStagingTex;                  /**< CPU-readable staging texture used before conversion (owned) */
 
-    int32_t m_nStagingWidth;
-    int32_t m_nStagingHeight;
-    int64_t m_nFrameCount;
-    bool m_bOpen;
-    eEncoderType m_eActiveEncoder;
+    int32_t m_nStagingWidth;                         /**< Width of the current staging texture */
+    int32_t m_nStagingHeight;                        /**< Height of the current staging texture */
+    int64_t m_nFrameCount;                           /**< Number of frames encoded so far */
+    bool m_bOpen;                                    /**< Whether the encoder is currently open */
+    eEncoderType m_eActiveEncoder;                   /**< Currently active encoder type */
 };

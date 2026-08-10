@@ -3,10 +3,10 @@
  * @author       eskeptor (yc.jeon)
  * @date         2026-08-08
  * @version      1.0.0
- * @brief        캡처 소스 관리 + D3D11 프리뷰 텍스처/SRV 유지
- * @details      - Update()를 매 프레임 메인 스레드에서 호출해야 함
- *               - StartScreenCapture / StartWindowCapture 로 소스 전환
- *               - GetPreviewSRV()를 ImGui::Image에 전달하여 프리뷰 출력
+ * @brief        Manages capture sources and maintains the D3D11 preview texture/SRV
+ * @details      - Update() must be called on the main thread every frame.
+ *               - Switch sources via StartScreenCapture / StartWindowCapture.
+ *               - Pass GetPreviewSRV() to ImGui::Image to display the live preview.
  */
 
 #pragma once
@@ -28,10 +28,10 @@ class CVideoEncoder;
 
 /**
  * @class    CCaptureManager
- * @brief    캡처 소스 관리 + D3D11 프리뷰 텍스처/SRV 유지
- * @details  - Update() 를 매 프레임 메인 스레드에서 호출해야 한다.
- *           - StartScreenCapture / StartWindowCapture 로 캡쳐 소스를 전환한다.
- *           - GetPreviewSRV() 를 ImGui::Image 에 전달하면 실시간 프리뷰가 출력된다.
+ * @brief    Manages capture sources and maintains the D3D11 preview texture/SRV
+ * @details  - Update() must be called on the main thread every frame.
+ *           - Switch capture sources via StartScreenCapture / StartWindowCapture.
+ *           - Passing GetPreviewSRV() to ImGui::Image renders the live preview.
  */
 class CCaptureManager
 {
@@ -40,98 +40,98 @@ public:
     ~CCaptureManager();
 
     /**
-     * @brief       캡쳐 소스를 초기화하고 모니터 목록을 빌드한다.
-     * @return      초기화 성공 여부
+     * @brief       Initializes capture sources and builds the monitor list.
+     * @return      Whether initialization succeeded
      */
     bool Initialize();
 
     /**
-     * @brief       지정 모니터 인덱스로 화면 캡쳐를 시작한다.
-     * @param[in]   nMonitorIndex       캡쳐할 모니터의 인덱스
-     * @return      캡쳐 시작 성공 여부
+     * @brief       Starts screen capture on the specified monitor index.
+     * @param[in]   nMonitorIndex       Index of the monitor to capture
+     * @return      Whether capture started successfully
      */
     bool StartScreenCapture(int32_t nMonitorIndex);
 
     /**
-     * @brief       지정 창 핸들로 창 캡쳐를 시작한다.
-     * @param[in]   hWnd                캡쳐할 대상 창 핸들
-     * @return      캡쳐 시작 성공 여부
+     * @brief       Starts window capture on the specified window handle.
+     * @param[in]   hWnd                Handle of the target window to capture
+     * @return      Whether capture started successfully
      */
     bool StartWindowCapture(HWND hWnd);
 
     /**
-     * @brief       현재 활성 캡쳐를 중지한다.
+     * @brief       Stops the currently active capture.
      */
     void StopCapture();
 
     /**
-     * @brief       매 프레임 호출 — 새 프레임 획득 및 프리뷰 텍스처 갱신
-     * @details     메인 스레드에서 반드시 매 프레임 호출해야 한다.
+     * @brief       Called every frame — acquires a new frame and updates the preview texture.
+     * @details     Must be called on the main thread every single frame.
      */
     void Update();
 
     /**
-     * @brief       원격 에이전트에 연결하여 원격 스크린 캡처를 시작한다.
-     * @param[in]   stTarget        에이전트 연결 정보 (IP, 포트, 비밀번호)
-     * @return      캡처 시작 성공 여부
+     * @brief       Connects to a remote agent and starts remote screen capture.
+     * @param[in]   stTarget        Remote agent connection info (IP, port, password)
+     * @return      Whether capture started successfully
      */
     bool StartNetworkCapture(const SRemoteTarget& stTarget);
 
     /**
-     * @brief       원격 에이전트 연결 상태 문자열을 반환한다.
-     * @return      상태 설명 문자열
+     * @brief       Returns a string describing the remote agent connection status.
+     * @return      Status description string
      */
     std::string GetNetworkCaptureStatus() const;
 
     /**
-     * @brief       원격 에이전트에 연결되어 있는지 여부를 반환한다.
-     * @return      연결 중이면 true
+     * @brief       Returns whether the remote agent is currently connected.
+     * @return      true if connected
      */
     bool IsNetworkConnected() const;
 
     /**
-     * @brief       창 목록을 다시 열거한다.
+     * @brief       Re-enumerates the window list.
      */
     void RefreshWindowList();
 
     /**
-     * @brief       MP4 녹화를 시작한다.
-     * @details     IsCapturing() 이 true 인 상태에서 호출해야 한다.
-     * @param[in]   stConfig            인코더 및 출력 파일 설정
-     * @return      녹화 시작 성공 여부
+     * @brief       Starts MP4 recording.
+     * @details     Must be called while IsCapturing() is true.
+     * @param[in]   stConfig            Encoder and output file settings
+     * @return      Whether recording started successfully
      */
     bool StartRecording(const SEncodeConfig& stConfig);
 
     /**
-     * @brief       녹화를 중지하고 MP4 파일을 완성한다.
+     * @brief       Stops recording and finalizes the MP4 file.
      */
     void StopRecording();
 
     /**
-     * @brief       현재 녹화 중인지 여부를 반환한다.
-     * @return      녹화 중이면 true
+     * @brief       Returns whether recording is currently in progress.
+     * @return      true if recording
      */
     bool IsRecording() const;
 
     /**
-     * @brief       현재까지 인코딩된 수 프레임 수를 반환한다.
-     * @return      인코딩된 프레임 수
+     * @brief       Returns the number of frames encoded so far.
+     * @return      Number of encoded frames
      */
     int64_t GetRecordedFrames() const;
 
     /**
-     * @brief       녹화를 일시 정지한다.
+     * @brief       Pauses the current recording.
      */
     void PauseRecording();
 
     /**
-     * @brief       일시 정지된 녹화를 재개한다.
+     * @brief       Resumes a paused recording.
      */
     void ResumeRecording();
 
     /**
-     * @brief       현재 녹화 상태를 반환한다.
-     * @return      eRecordState 열거값
+     * @brief       Returns the current recording state.
+     * @return      eRecordState enum value
      */
     eRecordState GetRecordState() const
     {
@@ -139,26 +139,26 @@ public:
     }
 
     /**
-     * @brief       실제 녹화된 총 경과 시간을 초 단위로 반환한다. (일시 정지 시간 제외)
-     * @return      경과 시간 (초)
+     * @brief       Returns the total actual recorded elapsed time in seconds (excluding paused time).
+     * @return      Elapsed time (seconds)
      */
     double GetElapsedSeconds() const;
 
     /**
-     * @brief       현재 출력 파일 크기를 KB 단위로 반환한다.
-     * @return      파일 크기 (KB)
+     * @brief       Returns the current output file size in KB.
+     * @return      File size (KB)
      */
     int64_t GetOutputFileSizeKB() const;
 
     /**
-     * @brief       현재 활성화된 인코더 유형을 반환한다.
-     * @return      eEncoderType 열거값
+     * @brief       Returns the currently active encoder type.
+     * @return      eEncoderType enum value
      */
     eEncoderType GetActiveEncoderType() const;
 
     /**
-     * @brief       현재 출력 파일 경로를 반환한다.
-     * @return      출력 경로 문자열 참조
+     * @brief       Returns the current output file path.
+     * @return      Reference to the output path string
      */
     const std::wstring& GetCurrentOutputPath() const
     {
@@ -166,8 +166,8 @@ public:
     }
 
     /**
-     * @brief       ImGui::Image 에 전달할 프리뷰 SRV 포인터를 반환한다.
-     * @return      ID3D11ShaderResourceView* (소유권 없음)
+     * @brief       Returns the preview SRV pointer to pass to ImGui::Image.
+     * @return      ID3D11ShaderResourceView* (not owned)
      */
     ID3D11ShaderResourceView* GetPreviewSRV() const
     {
@@ -175,8 +175,8 @@ public:
     }
 
     /**
-     * @brief       프리뷰 텍스처 너비를 반환한다.
-     * @return      너비 (픽셀)
+     * @brief       Returns the preview texture width.
+     * @return      Width (pixels)
      */
     int32_t GetPreviewWidth() const
     {
@@ -184,8 +184,8 @@ public:
     }
 
     /**
-     * @brief       프리뷰 텍스처 높이를 반환한다.
-     * @return      높이 (픽셀)
+     * @brief       Returns the preview texture height.
+     * @return      Height (pixels)
      */
     int32_t GetPreviewHeight() const
     {
@@ -193,14 +193,14 @@ public:
     }
 
     /**
-     * @brief       현재 캡쳐 중인지 여부를 반환한다.
-     * @return      캡쳐 진행 중이면 true
+     * @brief       Returns whether capture is currently in progress.
+     * @return      true if capturing
      */
     bool IsCapturing() const;
 
     /**
-     * @brief       내부 CScreenCapture 인스턴스 포인터를 반환한다.
-     * @return      CScreenCapture* (소유권 없음)
+     * @brief       Returns the internal CScreenCapture instance pointer.
+     * @return      CScreenCapture* (not owned)
      */
     CScreenCapture* GetScreenCapture() const
     {
@@ -208,8 +208,8 @@ public:
     }
 
     /**
-     * @brief       내부 CWindowCapture 인스턴스 포인터를 반환한다.
-     * @return      CWindowCapture* (소유권 없음)
+     * @brief       Returns the internal CWindowCapture instance pointer.
+     * @return      CWindowCapture* (not owned)
      */
     CWindowCapture* GetWindowCapture() const
     {
@@ -217,8 +217,8 @@ public:
     }
 
     /**
-     * @brief       내부 CNetworkCapture 인스턴스 포인터를 반환한다.
-     * @return      CNetworkCapture* (소유권 없음)
+     * @brief       Returns the internal CNetworkCapture instance pointer.
+     * @return      CNetworkCapture* (not owned)
      */
     CNetworkCapture* GetNetworkCapture() const
     {
@@ -227,59 +227,59 @@ public:
 
 private:
     /**
-     * @brief       프리뷰용 D3D11 텍스처와 SRV를 생성한다.
-     * @param[in]   nWidth          텍스처 너비 (픽셀)
-     * @param[in]   nHeight         텍스처 높이 (픽셀)
+     * @brief       Creates the D3D11 texture and SRV used for the preview.
+     * @param[in]   nWidth          Texture width (pixels)
+     * @param[in]   nHeight         Texture height (pixels)
      */
     void CreatePreviewResources(int32_t nWidth, int32_t nHeight);
 
     /**
-     * @brief       프리뷰 텍스처와 SRV를 해제한다.
+     * @brief       Releases the preview texture and SRV.
      */
     void ReleasePreviewResources();
 
     /**
-     * @brief       분할 녹화 실행 — 현재 파일을 종료하고 새 파일로 인코더를 전환한다.
+     * @brief       Performs a split recording — finalizes the current file and switches the encoder to a new file.
      */
     void PerformSplit();
 
     /**
-     * @brief       타임스탬프 기반 분할 파일 경로를 생성한다.
-     * @param[in]   strBase         기본 파일명 (확장자 제외)
-     * @param[in]   strExt          파일 확장자 (예: L".mp4")
-     * @return      타임스탬프가 포함된 분할 파일 경로
+     * @brief       Generates a timestamp-based split file path.
+     * @param[in]   strBase         Base file name (without extension)
+     * @param[in]   strExt          File extension (e.g. L".mp4")
+     * @return      Split file path including the timestamp
      */
     static std::wstring GenerateSplitPath(const std::wstring& strBase, const std::wstring& strExt);
 
 private:
-    ID3D11Device* m_pDevice;
-    ID3D11DeviceContext* m_pDeviceContext;
+    ID3D11Device* m_pDevice;                    /**< DirectX 11 device (not owned) */
+    ID3D11DeviceContext* m_pDeviceContext;      /**< DirectX 11 device context (not owned) */
 
-    std::unique_ptr<CScreenCapture>  m_cScreenCapture;
-    std::unique_ptr<CWindowCapture>  m_cWindowCapture;
-    std::unique_ptr<CNetworkCapture> m_cNetworkCapture;
-    std::unique_ptr<CVideoEncoder>   m_cVideoEncoder;
+    std::unique_ptr<CScreenCapture>  m_cScreenCapture;   /**< Screen capture source */
+    std::unique_ptr<CWindowCapture>  m_cWindowCapture;   /**< Window capture source */
+    std::unique_ptr<CNetworkCapture> m_cNetworkCapture;  /**< Network (remote agent) capture source */
+    std::unique_ptr<CVideoEncoder>   m_cVideoEncoder;    /**< Video encoder used for recording */
 
-    ICapture* m_pActiveCapture;
+    ICapture* m_pActiveCapture;                  /**< Currently active capture source (not owned) */
 
-    ID3D11Texture2D* m_pPreviewTexture;
-    ID3D11ShaderResourceView* m_pPreviewSRV;
-    int32_t m_nPreviewWidth;
-    int32_t m_nPreviewHeight;
+    ID3D11Texture2D* m_pPreviewTexture;          /**< Preview texture (owned) */
+    ID3D11ShaderResourceView* m_pPreviewSRV;     /**< Preview shader resource view (owned) */
+    int32_t m_nPreviewWidth;                     /**< Preview texture width */
+    int32_t m_nPreviewHeight;                    /**< Preview texture height */
 
-    // 인코딩 FPS 제어
+    // Encoding FPS control
     SEncodeConfig m_stEncodeConfig;
     std::chrono::steady_clock::time_point m_tLastEncodeTime;
     bool m_bFirstEncodeFrame;
 
-    // 녹화 상태 머신 + 시간 추적
+    // Recording state machine + elapsed time tracking
     eRecordState m_eRecordState;
     std::chrono::steady_clock::time_point m_tRecordStart;
     std::chrono::steady_clock::time_point m_tPauseStart;
     std::chrono::steady_clock::duration m_dPausedDuration;
     std::wstring m_strOutputPath;
 
-    // 분할 녹화: 기본 경로/확장자 (타임스탬프 파일명 생성용)
+    // Split recording: base path/extension (used to generate timestamped file names)
     std::wstring m_strSplitBasePath;
     std::wstring m_strSplitExtension;
 };

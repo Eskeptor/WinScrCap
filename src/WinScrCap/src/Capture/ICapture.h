@@ -3,20 +3,20 @@
  * @author       eskeptor (yc.jeon)
  * @date         2026-07-23
  * @version      1.0.0
- * @brief        캡처 소스 인터페이스 정의
+ * @brief        Definition of the capture source interface
  */
 
 #pragma once
 
 #include "Common/Types.h"
 
-struct SFrameData; // Types.h에서 정의
+struct SFrameData; // Defined in Types.h
 
 /**
  * @class    ICapture
- * @brief    캡처 소스 추상 인터페이스
- * @details  모니터 캡처(CScreenCapture) 및 창 캡처(CWindowCapture)가 공통으로
- *           구현해야 하는 순수 가상 인터페이스이다.
+ * @brief    Abstract interface for capture sources
+ * @details  A pure virtual interface that monitor capture (CScreenCapture) and
+ *           window capture (CWindowCapture) must implement in common.
  */
 class ICapture
 {
@@ -24,38 +24,38 @@ public:
     virtual ~ICapture() = default;
 
     /**
-     * @brief       캡처 소스를 초기화한다.
-     * @return      초기화 성공 여부
+     * @brief       Initializes the capture source.
+     * @return      Whether initialization succeeded
      */
     virtual bool Initialize()  = 0;
 
     /**
-     * @brief       캡처를 시작한다.
-     * @return      캡처 시작 성공 여부
+     * @brief       Starts capture.
+     * @return      Whether capture started successfully
      */
     virtual bool StartCapture() = 0;
 
     /**
-     * @brief       캡처를 중지한다.
+     * @brief       Stops capture.
      */
     virtual void StopCapture() = 0;
 
     /**
-     * @brief       다음 프레임을 획득한다.
-     * @param[out]  pOutFrame       획득된 프레임 정보를 저장할 SFrameData 포인터
-     * @return      프레임 획득 성공 여부 (새 프레임이 없으면 false)
+     * @brief       Acquires the next frame.
+     * @param[out]  pOutFrame       Pointer to the SFrameData that receives the acquired frame info
+     * @return      Whether a frame was acquired successfully (false if no new frame is available)
      */
     virtual bool AcquireFrame(SFrameData* pOutFrame) = 0;
 
     /**
-     * @brief       현재 보유 중인 프레임을 해제한다.
-     * @details     AcquireFrame() 성공 후 반드시 호출해야 내부 버퍼가 정상 반환된다.
+     * @brief       Releases the currently held frame.
+     * @details     Must always be called after a successful AcquireFrame() so the internal buffer is returned normally.
      */
     virtual void ReleaseFrame() = 0;
 
     /**
-     * @brief       현재 캡처 중인지 여부를 반환한다.
-     * @return      캡처 진행 중이면 true
+     * @brief       Returns whether capture is currently in progress.
+     * @return      true if capturing
      */
     virtual bool IsCapturing() const = 0;
 };

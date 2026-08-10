@@ -3,10 +3,10 @@
  * @author       eskeptor (yc.jeon)
  * @date         2026-07-23
  * @version      1.0.0
- * @brief        DXGI Desktop Duplication API 기반 모니터 전체 캡처
- * @details      - Initialize() 시 DX11 디바이스 어댑터의 모든 모니터를 열거
- *               - StartCapture(nMonitorIndex)로 특정 모니터 캡처 시작
- *               - GPU 메모리에서 직접 텍스처 반환 (CPU 복사 없음)
+ * @brief        DXGI Desktop Duplication API-based full-monitor capture
+ * @details      - Initialize() enumerates all monitors of the DX11 device adapter.
+ *               - StartCapture(nMonitorIndex) starts capturing a specific monitor.
+ *               - Returns the texture directly from GPU memory (no CPU copy).
  */
 
 #pragma once
@@ -20,10 +20,10 @@
 
 /**
  * @class    CScreenCapture
- * @brief    DXGI Desktop Duplication API 기반 모니터 전체 캡처 클래스
- * @details  - Initialize() 시 DX11 디바이스 어댑터의 모든 모니터를 열거한다.
- *           - StartCapture(nMonitorIndex) 로 특정 모니터 캡처를 시작한다.
- *           - GPU 메모리에서 직접 텍스처를 반환하므로 CPU 복사가 없다.
+ * @brief    DXGI Desktop Duplication API-based full-monitor capture class
+ * @details  - Initialize() enumerates all monitors of the DX11 device adapter.
+ *           - StartCapture(nMonitorIndex) starts capturing a specific monitor.
+ *           - Returns the texture directly from GPU memory, so there is no CPU copy.
  */
 class CScreenCapture final : public ICapture
 {
@@ -32,52 +32,52 @@ public:
     ~CScreenCapture() override;
 
     /**
-     * @brief       캡처 소스를 초기화한다.
+     * @brief       Initializes the capture source.
      * @copydoc     ICapture::Initialize()
      */
     bool Initialize() override;
 
     /**
-     * @brief       기본 모니터(인덱스 0)으로 캡처를 시작한다.
+     * @brief       Starts capture on the default monitor (index 0).
      * @copydoc     ICapture::StartCapture()
      */
     bool StartCapture() override;
 
     /**
-     * @brief       캡처를 중지한다.
+     * @brief       Stops capture.
      * @copydoc     ICapture::StopCapture()
      */
     void StopCapture() override;
 
     /**
-     * @brief       프레임을 획득한다.
+     * @brief       Acquires a frame.
      * @copydoc     ICapture::AcquireFrame()
      */
     bool AcquireFrame(SFrameData* pOutFrame) override;
 
     /**
-     * @brief       프레임을 해제한다.
+     * @brief       Releases a frame.
      * @copydoc     ICapture::ReleaseFrame()
      */
     void ReleaseFrame() override;
 
     /**
-     * @brief       캡처 상태를 반환한다.
+     * @brief       Returns the capture state.
      * @copydoc     ICapture::IsCapturing()
      */
     bool IsCapturing() const override;
 
     /**
-     * @brief       특정 모니터 인덱스로 캡처를 시작한다.
-     * @details     Initialize() 이후 호출 가능하다.
-     * @param[in]   nMonitorIndex   캡처할 모니터 인덱스
-     * @return      캡처 시작 성공 여부
+     * @brief       Starts capture on a specific monitor index.
+     * @details     Can be called after Initialize().
+     * @param[in]   nMonitorIndex   Index of the monitor to capture
+     * @return      Whether capture started successfully
      */
     bool StartCapture(int32_t nMonitorIndex);
 
     /**
-     * @brief       열거된 모니터 목록을 반환한다.
-     * @return      SMonitorDesc 배열 참조 (Initialize() 이후 유효)
+     * @brief       Returns the enumerated monitor list.
+     * @return      Reference to the SMonitorDesc array (valid after Initialize())
      */
     const std::vector<SMonitorDesc>& GetMonitorList() const
     {
@@ -86,19 +86,19 @@ public:
 
 private:
     /**
-     * @brief       DXGI 어댑터를 순회하며 연결된 모니터 목록을 빌드한다.
-     * @return      목록 빌드 성공 여부
+     * @brief       Iterates over DXGI adapters and builds the list of connected monitors.
+     * @return      Whether the list was built successfully
      */
     bool BuildMonitorList();
 
 private:
-    ID3D11Device* m_pDevice;
-    IDXGIOutputDuplication* m_pDuplication;
-    ID3D11Texture2D* m_pCurrentFrame;
+    ID3D11Device* m_pDevice;                        /**< DirectX 11 device (not owned) */
+    IDXGIOutputDuplication* m_pDuplication;          /**< DXGI desktop duplication interface for the active monitor */
+    ID3D11Texture2D* m_pCurrentFrame;                /**< Texture of the most recently acquired frame */
 
-    int32_t m_nTargetMonitor;
-    bool m_bCapturing;
-    bool m_bFrameAcquired;
+    int32_t m_nTargetMonitor;                        /**< Index of the monitor currently being captured */
+    bool m_bCapturing;                               /**< Whether capture is currently active */
+    bool m_bFrameAcquired;                           /**< Whether a frame is currently acquired and not yet released */
 
-    std::vector<SMonitorDesc> m_arrMonitors;
+    std::vector<SMonitorDesc> m_arrMonitors;         /**< List of monitors enumerated during Initialize() */
 };

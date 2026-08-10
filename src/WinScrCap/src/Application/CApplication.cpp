@@ -246,6 +246,21 @@ bool CApplication::InitImGui()
     refIo.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     refIo.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+    const char* pszFonts[] =
+    {
+        "C:\\Windows\\Fonts\\NanumGothic.ttf",
+        "C:\\Windows\\Fonts\\malgun.ttf",
+        "C:\\Windows\\Fonts\\arial.ttf",
+    };
+    for (int i = 0; i < ARRAYSIZE(pszFonts); ++i)
+    {
+        ImFont* pFont = refIo.Fonts->AddFontFromFileTTF(pszFonts[i], 14.0f, nullptr, refIo.Fonts->GetGlyphRangesKorean());
+        if (pFont != nullptr)
+        {
+            break;
+        }
+    }
+
     ImGui::StyleColorsDark();
 
     if (!ImGui_ImplWin32_Init(m_hWnd))

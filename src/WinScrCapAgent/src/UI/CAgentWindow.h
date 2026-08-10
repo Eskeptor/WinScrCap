@@ -1,3 +1,11 @@
+/**
+ * @file         CAgentWindow.h
+ * @author       eskeptor (yc.jeon)
+ * @date         2026-08-10
+ * @version      1.0.0
+ * @brief        Definition of the agent's ImGui-based tray/settings UI window class
+ */
+
 #pragma once
 
 #include <Windows.h>
@@ -9,46 +17,81 @@
 
 class CAgentServer;
 
+/**
+ * @class    CAgentWindow
+ * @brief    Manages the agent's main window, tray icon, and settings dialog UI
+ * @details  Owns the DX11 render target view used to draw the ImGui UI and delegates
+ *           server start/stop and configuration persistence to the caller via SAgentConfig.
+ */
 class CAgentWindow
 {
 public:
     CAgentWindow(ID3D11Device* pDevice,
-                 ID3D11DeviceContext* pDeviceContext,
-                 IDXGISwapChain* pSwapChain,
-                 HWND hWnd,
-                 CAgentServer* pServer);
+        ID3D11DeviceContext* pDeviceContext,
+        IDXGISwapChain* pSwapChain,
+        HWND hWnd,
+        CAgentServer* pServer);
     ~CAgentWindow();
 
-    // ImGui 초기화 (CApplication에서 ImGui 설정 완료 후 호출)
+    /**
+     * @brief       Initializes ImGui resources for this window.
+     * @details     Must be called after CApplication has finished setting up ImGui.
+     * @return      Whether initialization succeeded
+     */
     bool Initialize();
+
+    /**
+     * @brief       Releases all ImGui resources owned by this window.
+     */
     void Shutdown();
 
-    // 매 프레임 호출 — true 반환 시 계속, false 반환 시 Exit 요청
+    /**
+     * @brief       Renders the window UI for the current frame.
+     * @param[in,out] stConfig      Current agent configuration, may be edited by the UI
+     * @param[in]     lpszIniPath   Path to the INI file used to persist configuration changes
+     * @return      true to keep running, false to request application exit
+     */
     bool Render(SAgentConfig& stConfig, const wchar_t* lpszIniPath);
 
-    // 창을 숨기고 트레이로 최소화
+    /**
+     * @brief       Hides the window and minimizes it to the system tray.
+     */
     void HideToTray();
 
-    // 설정 대화상자 열기 플래그 설정 (트레이 메뉴 → Settings 클릭 시)
-    void RequestOpenSettings() { m_bOpenSettings = true; }
+    /**
+     * @brief       Requests that the settings dialog be opened (e.g. from the tray menu's Settings click).
+     */
+    void RequestOpenSettings()
+    {
+        m_bOpenSettings = true;
+    }
 
 private:
+    /**
+     * @brief       Renders the main window body (server status, start/stop controls, etc.).
+     * @param[in]   stConfig    Current agent configuration used for display
+     */
     void RenderMainBody(const SAgentConfig& stConfig);
+
+    /**
+     * @brief       Renders the settings dialog and writes edited values back to stConfig/the INI file.
+     * @param[in,out] stConfig      Agent configuration to edit and persist
+     * @param[in]     lpszIniPath   Path to the INI file to save changes to
+     */
     void RenderSettingsDialog(SAgentConfig& stConfig, const wchar_t* lpszIniPath);
 
 private:
-    HWND                  m_hWnd;
-    ID3D11Device*         m_pDevice;
-    ID3D11DeviceContext*  m_pDeviceContext;
-    IDXGISwapChain*       m_pSwapChain;
-    ID3D11RenderTargetView* m_pRTV;
-    CAgentServer*         m_pServer;
+    HWND m_hWnd;                                  /**< Window handle */
+    ID3D11Device* m_pDevice;                      /**< DirectX 11 device (not owned) */
+    ID3D11DeviceContext* m_pDeviceContext;        /**< DirectX 11 device context (not owned) */
+    IDXGISwapChain* m_pSwapChain;                 /**< DXGI swap chain (not owned) */
+    ID3D11RenderTargetView* m_pRTV;               /**< Render target view for the swap chain back buffer (owned) */
+    CAgentServer* m_pServer;                      /**< Agent TCP server (not owned) */
 
-    bool m_bImGuiInitialized;
-    bool m_bOpenSettings;
-    bool m_bExitRequested;
+    bool m_bImGuiInitialized;                     /**< Whether ImGui has been initialized for this window */
+    bool m_bOpenSettings;                         /**< Whether the settings dialog should be opened this frame */
+    bool m_bExitRequested;                        /**< Whether the user has requested application exit */
 
-    // 설정 대화상자 편집 버퍼 (설정 팝업이 열릴 때 복사해서 사용)
-    SAgentConfig m_stEditConfig;
-    char         m_szEditPassword[128];  // 평문 편집 버퍼
+    SAgentConfig m_stEditConfig;                  /**< Working copy of the configuration being edited */
+    char m_szEditPassword[128];                   /**< Plain-text password edit buffer */
 };

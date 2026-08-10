@@ -161,13 +161,6 @@ WinScrCap/
 - **Control packet**: `[4B magic "CTRL"] [1B type: 0x01=Ping 0x02=Pong 0x03=Stop]`
 - **Security note**: no TLS — intended for LAN or VPN use only
 
-### TODO — Phase R4 (not yet implemented)
-
-- [ ] Automatic reconnect and recording resume after network drop
-- [ ] Ping/Pong watchdog with configurable timeout (currently 10 s hard-coded)
-- [ ] Packet magic validation to guard against stream corruption
-- [ ] Agent-side DX11 debug layer resource leak audit
-
 ---
 
 ## License

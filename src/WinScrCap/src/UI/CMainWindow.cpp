@@ -95,6 +95,7 @@ CMainWindow::CMainWindow(CCaptureManager* pCaptureManager)
     , m_arrRemoteHost{ "192.168.0.1" }
     , m_nRemotePort(9201)
     , m_arrRemotePassword{}
+    , m_bRemoteWasConnected(false)
 {
     assert(pCaptureManager != nullptr);
 }
@@ -240,6 +241,16 @@ void CMainWindow::RenderRemotePanel()
     ImGui::Spacing();
 
     const bool bConnected = m_pCaptureManager->IsNetworkConnected();
+
+    // 수동 중단(Disconnect 버튼)이 아닌 상태에서 연결이 끊기면 오류 팝업으로 알림
+    if (m_bRemoteWasConnected &&
+        !bConnected &&
+        m_pCaptureManager->IsCapturing())
+    {
+        ShowError("Remote agent disconnected.\nAttempting to reconnect...");
+    }
+    m_bRemoteWasConnected = bConnected;
+
     if (bConnected)
     {
         if (ImGui::Button("Disconnect", ImVec2(-1.0f, 0.0f)))

@@ -123,8 +123,7 @@ bool CCaptureManager::IsNetworkConnected() const
     {
         return false;
     }
-    return m_cNetworkCapture->IsCapturing() &&
-        m_cNetworkCapture->GetRemoteWidth() > 0;
+    return m_cNetworkCapture->IsConnected();
 }
 
 void CCaptureManager::StopCapture()

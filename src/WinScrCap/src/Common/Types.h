@@ -3,7 +3,7 @@
  * @author       eskeptor (yc.jeon)
  * @date         2026-08-08
  * @version      1.0.0
- * @brief        공통 타입 정의
+ * @brief        Definition of common types
  */
 
 #pragma once
@@ -17,97 +17,97 @@ struct ID3D11Texture2D;
 
 /**
  * @struct   SFrameData
- * @brief    캡처된 단일 프레임 정보를 담는 구조체
+ * @brief    Structure holding information for a single captured frame
  */
 struct SFrameData
 {
-    ID3D11Texture2D* pTexture = nullptr;    ///< 캡처된 VRAM 텍스처 포인터 (소유권 없음)
-    int64_t Timestamp = 0;                  ///< 프레임 획득 시각 (마이크로초)
-    int32_t Width = 0;                      ///< 텍스처 너비 (픽셀)
-    int32_t Height = 0;                     ///< 텍스처 높이 (픽셀)
+    ID3D11Texture2D* pTexture = nullptr;    /**< Pointer to the captured VRAM texture (not owned) */
+    int64_t Timestamp = 0;                  /**< Frame acquisition time (microseconds) */
+    int32_t Width = 0;                      /**< Texture width (pixels) */
+    int32_t Height = 0;                     /**< Texture height (pixels) */
 };
 
 /**
  * @struct   SMonitorDesc
- * @brief    열거된 모니터 정보를 담는 구조체
+ * @brief    Structure holding information for an enumerated monitor
  */
 struct SMonitorDesc
 {
-    int32_t Index = 0;                      ///< DXGI 어댑터 기준 모니터 인덱스
-    std::wstring Name;                      ///< 모니터 장치 이름 (예: L"\\\\.\\DISPLAY1")
-    int32_t Width = 0;                      ///< 모니터 해상도 너비 (픽셀)
-    int32_t Height = 0;                     ///< 모니터 해상도 높이 (픽셀)
-    bool IsPrimary = false;                 ///< 주 모니터 여부
+    int32_t Index = 0;                      /**< Monitor index based on the DXGI adapter */
+    std::wstring Name;                      /**< Monitor device name (e.g. L"\\\\.\\DISPLAY1") */
+    int32_t Width = 0;                      /**< Monitor resolution width (pixels) */
+    int32_t Height = 0;                     /**< Monitor resolution height (pixels) */
+    bool IsPrimary = false;                 /**< Whether this is the primary monitor */
 };
 
 /**
  * @struct   SWindowDesc
- * @brief    캡처 가능한 창 정보를 담는 구조체
+ * @brief    Structure holding information for a capturable window
  */
 struct SWindowDesc
 {
-    HWND hWnd = nullptr;                    ///< 창 핸들
-    std::wstring Title;                     ///< 창 제목 문자열
+    HWND hWnd = nullptr;                    /**< Window handle */
+    std::wstring Title;                     /**< Window title string */
 };
 
 /**
  * @struct   SEncodeConfig
- * @brief    FFmpeg 인코더 및 출력 파일 설정 구조체
+ * @brief    Structure holding FFmpeg encoder and output file settings
  */
 struct SEncodeConfig
 {
-    std::wstring OutputPath;                ///< 출력 MP4 파일 경로
-    int32_t Width = 1920;                   ///< 출력 영상 너비 (픽셀)
-    int32_t Height = 1080;                  ///< 출력 영상 높이 (픽셀)
-    int32_t FrameRate = 30;                 ///< 목표 프레임 레이트 (fps)
-    int32_t BitRate = 8000000;              ///< 목표 비트레이트 (bps, 기본 8 Mbps)
+    std::wstring OutputPath;                /**< Output MP4 file path */
+    int32_t Width = 1920;                   /**< Output video width (pixels) */
+    int32_t Height = 1080;                  /**< Output video height (pixels) */
+    int32_t FrameRate = 30;                 /**< Target frame rate (fps) */
+    int32_t BitRate = 8000000;              /**< Target bit rate (bps, default 8 Mbps) */
 
-    bool bSplitEnabled = false;             ///< 분할 녹화 활성화 여부
-    int32_t nSplitMinutes = 60;             ///< 분할 간격 (분, 유효 범위 1 ~ 1440)
+    bool bSplitEnabled = false;             /**< Whether split recording is enabled */
+    int32_t nSplitMinutes = 60;             /**< Split interval (minutes, valid range 1 ~ 1440) */
 };
 
 /**
  * @struct   SRemoteTarget
- * @brief    원격 에이전트 연결 대상 정보
+ * @brief    Remote agent connection target information
  */
 struct SRemoteTarget
 {
-    char szHost[256] = {};      ///< Agent IP 또는 호스트명
-    uint16_t Port = 9201;       ///< Agent 포트
-    char szPassword[128] = {};  ///< 인증 패스워드 (challenge-response용 평문)
+    char szHost[256] = {};      /**< Agent IP or host name */
+    uint16_t Port = 9201;       /**< Agent port */
+    char szPassword[128] = {};  /**< Authentication password (plain text, used for challenge-response) */
 };
 
 /**
  * @enum     eCaptureType
- * @brief    캡처 소스 유형
+ * @brief    Capture source type
  */
 enum class eCaptureType
 {
-    Monitor,                                ///< 모니터 전체 캡처 (DXGI Desktop Duplication)
-    Window,                                 ///< 특정 창 캡처 (Windows Graphics Capture API)
-    Remote,                                 ///< 원격 에이전트 캡처 (WinScrCapAgent TCP)
+    Monitor,                                /**< Full-monitor capture (DXGI Desktop Duplication) */
+    Window,                                 /**< Specific-window capture (Windows Graphics Capture API) */
+    Remote,                                 /**< Remote agent capture (WinScrCapAgent TCP) */
 };
 
 /**
  * @enum     eEncoderType
- * @brief    H.264 인코더 유형
+ * @brief    H.264 encoder type
  */
 enum class eEncoderType
 {
-    NVENC,                                  ///< NVIDIA GPU 인코더 (h264_nvenc)
-    AMF,                                    ///< AMD GPU 인코더 (h264_amf)
-    QSV,                                    ///< Intel Quick Sync 인코더 (h264_qsv)
-    MediaFoundation,                        ///< Windows MF 소프트웨어 인코더 (h264_mf, 폴백)
+    NVENC,                                  /**< NVIDIA GPU encoder (h264_nvenc) */
+    AMF,                                    /**< AMD GPU encoder (h264_amf) */
+    QSV,                                    /**< Intel Quick Sync encoder (h264_qsv) */
+    MediaFoundation,                        /**< Windows MF software encoder (h264_mf, fallback) */
 };
 
 /**
  * @enum     eRecordState
- * @brief    녹화 상태 머신 상태값
+ * @brief    Recording state machine state value
  */
 enum class eRecordState
 {
-    Idle,                                   ///< 녹화 대기 (미시작)
-    Recording,                              ///< 녹화 진행 중
-    Paused,                                 ///< 녹화 일시 정지
-    Stopping,                               ///< 녹화 종료 처리 중
+    Idle,                                   /**< Waiting to record (not started) */
+    Recording,                              /**< Recording in progress */
+    Paused,                                 /**< Recording paused */
+    Stopping,                               /**< Finalizing the recording */
 };

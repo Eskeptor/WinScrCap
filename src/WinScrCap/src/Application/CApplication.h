@@ -3,8 +3,9 @@
  * @author       eskeptor (yc.jeon)
  * @date         2026-07-23
  * @version      1.0.0
- * @brief        CApplication 클래스 정의
- * @details      CApplication 클래스는 DirectX 11 장치, 스왑 체인, 렌더 타겟 뷰를 소유하고, ImGui 초기화 및 메인 렌더 루프를 관리하며, Win32 메시지 루프를 처리합니다.
+ * @brief        Definition of the CApplication class
+ * @details      The CApplication class owns the DirectX 11 device, swap chain, and render target view,
+ *               manages ImGui initialization and the main render loop, and handles the Win32 message loop.
  */
 
 #pragma once
@@ -19,43 +20,43 @@ class CCaptureManager;
 
 /**
  * @class    CApplication
- * @brief    애플리케이션 최상위 클래스
- * @details  DirectX 11 디바이스 · 스왑 체인 · RTV를 소유하고,
- *           ImGui 초기화 및 메인 렌더 루프를 관리하며,
- *           Win32 메시지 루프를 처리한다.
+ * @brief    Top-level application class
+ * @details  Owns the DirectX 11 device, swap chain, and render target view,
+ *           manages ImGui initialization and the main render loop,
+ *           and handles the Win32 message loop.
  */
 class CApplication
 {
 public:
     /**
-     * @brief       기본 생성자 — 멤버 포인터를 nullptr 로 초기화한다.
+     * @brief       Default constructor — initializes member pointers to nullptr.
      */
     CApplication();
 
     /**
-     * @brief       소멸자 — Shutdown() 을 호출하여 모든 리소스를 해제한다.
+     * @brief       Destructor — calls Shutdown() to release all resources.
      */
     ~CApplication();
 
     /**
-     * @brief       애플리케이션을 초기화한다.
-     * @details     Win32 창 생성 → DirectX 11 초기화 → ImGui 초기화 순서로 수행한다.
-     * @param[in]   hInstance       Win32 애플리케이션 인스턴스 핸들
-     * @return      초기화 성공 여부
+     * @brief       Initializes the application.
+     * @details     Performs, in order: Win32 window creation -> DirectX 11 initialization -> ImGui initialization.
+     * @param[in]   hInstance       Win32 application instance handle
+     * @return      Whether initialization succeeded
      */
     bool Initialize(HINSTANCE hInstance);
 
     /**
-     * @brief       메인 루프를 실행한다.
-     * @details     메시지 루프를 돌면서 ImGui 프레임을 생성하고 화면에 Present 한다.
-     *              WM_QUIT 를 수신하면 루프를 종료하고 종료 코드를 반환한다.
-     * @return      프로세스 종료 코드
+     * @brief       Runs the main loop.
+     * @details     Pumps the message loop, builds an ImGui frame, and presents it to the screen.
+     *              When WM_QUIT is received, the loop ends and the exit code is returned.
+     * @return      Process exit code
      */
     int Run();
 
     /**
-     * @brief       DX11 디바이스 포인터를 반환한다.
-     * @return      ID3D11Device* (소유권 없음)
+     * @brief       Returns the DX11 device pointer.
+     * @return      ID3D11Device* (not owned)
      */
     ID3D11Device* GetDevice() const
     {
@@ -63,8 +64,8 @@ public:
     }
 
     /**
-     * @brief       DX11 디바이스 컨텍스트 포인터를 반환한다.
-     * @return      ID3D11DeviceContext* (소유권 없음)
+     * @brief       Returns the DX11 device context pointer.
+     * @return      ID3D11DeviceContext* (not owned)
      */
     ID3D11DeviceContext* GetDeviceContext() const
     {
@@ -73,74 +74,74 @@ public:
 
 private:
     /**
-     * @brief       Win32 창을 생성하고 윈도우 클래스를 등록한다.
-     * @param[in]   hInstance       Win32 애플리케이션 인스턴스 핸들
-     * @return      성공 여부
+     * @brief       Creates the Win32 window and registers the window class.
+     * @param[in]   hInstance       Win32 application instance handle
+     * @return      Whether the operation succeeded
      */
     bool InitWindow(HINSTANCE hInstance);
 
     /**
-     * @brief       DirectX 11 디바이스, 스왑 체인, RTV를 초기화한다.
-     * @return      성공 여부
+     * @brief       Initializes the DirectX 11 device, swap chain, and render target view.
+     * @return      Whether the operation succeeded
      */
     bool InitDirectX();
 
     /**
-     * @brief       ImGui 컨텍스트 및 Win32 · DX11 백엔드를 초기화한다.
-     * @return      성공 여부
+     * @brief       Initializes the ImGui context and the Win32/DX11 backends.
+     * @return      Whether the operation succeeded
      */
     bool InitImGui();
 
     /**
-     * @brief       모든 리소스를 해제하고 ImGui를 종료한다.
+     * @brief       Releases all resources and shuts down ImGui.
      */
     void Shutdown();
 
     /**
-     * @brief       ImGui 새 프레임을 시작하고 렌더 타겟을 클리어한다.
+     * @brief       Starts a new ImGui frame and clears the render target.
      */
     void BeginFrame();
 
     /**
-     * @brief       ImGui 렌더 데이터를 DX11로 드로우하고 SwapChain::Present 를 호출한다.
+     * @brief       Draws the ImGui render data via DX11 and calls SwapChain::Present.
      */
     void EndFrame();
 
     /**
-     * @brief       현재 렌더 타겟 뷰를 해제한다.
+     * @brief       Releases the current render target view.
      */
     void CleanupRenderTarget();
 
     /**
-     * @brief       스왑 체인의 백 버퍼로부터 렌더 타겟 뷰를 생성한다.
+     * @brief       Creates a render target view from the swap chain's back buffer.
      */
     void CreateRenderTarget();
 
     /**
-     * @brief       Win32 창 메시지 콜백 프로시저
-     * @param[in]   hWnd        메시지를 받은 창 핸들
-     * @param[in]   nMsg        메시지 식별자
-     * @param[in]   wParam      메시지 부가 파라미터 (word)
-     * @param[in]   lParam      메시지 부가 파라미터 (long)
-     * @return      메시지 처리 결과
+     * @brief       Win32 window message callback procedure.
+     * @param[in]   hWnd        Handle of the window that received the message
+     * @param[in]   nMsg        Message identifier
+     * @param[in]   wParam      Additional message parameter (word)
+     * @param[in]   lParam      Additional message parameter (long)
+     * @return      Message processing result
      */
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT nMsg, WPARAM wParam, LPARAM lParam);
 
 private:
-    HWND m_hWnd;
-    ID3D11Device* m_pDevice;
-    ID3D11DeviceContext* m_pDeviceContext;
-    IDXGISwapChain* m_pSwapChain;
-    ID3D11RenderTargetView* m_pRenderTargetView;
+    HWND m_hWnd;                                                      /**< Main window handle */
+    ID3D11Device* m_pDevice;                                          /**< DirectX 11 device (owned) */
+    ID3D11DeviceContext* m_pDeviceContext;                            /**< DirectX 11 immediate device context (owned) */
+    IDXGISwapChain* m_pSwapChain;                                     /**< DXGI swap chain (owned) */
+    ID3D11RenderTargetView* m_pRenderTargetView;                      /**< Render target view for the back buffer (owned) */
 
-    std::unique_ptr<CMainWindow> m_cMainWindow;
-    std::unique_ptr<CCaptureManager> m_cCaptureManager;
+    std::unique_ptr<CMainWindow> m_cMainWindow;                       /**< Main ImGui window/UI logic */
+    std::unique_ptr<CCaptureManager> m_cCaptureManager;               /**< Capture/encoding manager */
 
-    bool m_bImGuiInitialized = false;
+    bool m_bImGuiInitialized = false;                                 /**< Whether ImGui has been initialized */
 
-    static constexpr int32_t WINDOW_WIDTH = 1280;
-    static constexpr int32_t WINDOW_HEIGHT = 720;
+    static constexpr int32_t WINDOW_WIDTH = 1280;                     /**< Default window width in pixels */
+    static constexpr int32_t WINDOW_HEIGHT = 720;                     /**< Default window height in pixels */
 
-    static constexpr wchar_t WINDOW_CLASS_NAME[] = L"WinScrCapClass";
-    static constexpr wchar_t WINDOW_TITLE[] = L"WinScrCap";
+    static constexpr wchar_t WINDOW_CLASS_NAME[] = L"WinScrCapClass"; /**< Win32 window class name */
+    static constexpr wchar_t WINDOW_TITLE[] = L"WinScrCap";           /**< Window title text */
 };

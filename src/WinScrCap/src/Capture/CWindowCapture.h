@@ -3,7 +3,7 @@
  * @author       eskeptor (yc.jeon)
  * @date         2026-07-23
  * @version      1.0.0
- * @brief        Windows Graphics Capture API (WGC) 기반 특정 창 캡처 클래스 정의
+ * @brief        Definition of the specific-window capture class based on the Windows Graphics Capture API (WGC)
  */
 
 #pragma once
@@ -19,9 +19,9 @@
 
 /**
  * @class    CWindowCapture
- * @brief    Windows Graphics Capture API (WGC) 기반 특정 창 캡처 클래스
- * @details  WinRT COM 을 통해 HWND 단위로 캡처를 수행하며,
- *           Direct3D11CaptureFramePool 을 이용해 GPU 텍스처를 반환한다.
+ * @brief    Specific-window capture class based on the Windows Graphics Capture API (WGC)
+ * @details  Captures on a per-HWND basis via WinRT COM,
+ *           and returns a GPU texture using Direct3D11CaptureFramePool.
  */
 class CWindowCapture final : public ICapture
 {
@@ -32,57 +32,57 @@ public:
     ~CWindowCapture() override;
 
     /**
-     * @brief       초기화한다.
+     * @brief       Initializes the capture source.
      * @copydoc     ICapture::Initialize()
      */
     bool Initialize() override;
 
     /**
-     * @brief       마지막으로 지정된 창 핸들로 캡처를 시작한다.
+     * @brief       Starts capture on the last-specified window handle.
      * @copydoc     ICapture::StartCapture()
      */
     bool StartCapture() override;
 
     /**
-     * @brief       캡처를 중지한다.
+     * @brief       Stops capture.
      * @copydoc     ICapture::StopCapture()
      */
     void StopCapture() override;
 
     /**
-     * @brief       다음 프레임을 획득한다.
+     * @brief       Acquires the next frame.
      * @copydoc     ICapture::AcquireFrame()
      */
     bool AcquireFrame(SFrameData* pOutFrame) override;
 
     /**
-     * @brief       현재 보유 중인 프레임을 해제한다.
+     * @brief       Releases the currently held frame.
      * @copydoc     ICapture::ReleaseFrame()
      */
     void ReleaseFrame() override;
 
     /**
-     * @brief       현재 캡처 중인지 여부를 반환한다.
+     * @brief       Returns whether capture is currently in progress.
      * @copydoc     ICapture::IsCapturing()
      */
     bool IsCapturing() const override;
 
     /**
-     * @brief       특정 창 핸들로 캡처를 시작한다.
-     * @details     Initialize() 이후 호출 가능하다.
-     * @param[in]   hWnd        캡처할 대상 창 핸들
-     * @return      캡처 시작 성공 여부
+     * @brief       Starts capture on a specific window handle.
+     * @details     Can be called after Initialize().
+     * @param[in]   hWnd        Handle of the target window to capture
+     * @return      Whether capture started successfully
      */
     bool StartCapture(HWND hWnd);
 
     /**
-     * @brief       현재 화면에 표시 중인 창 목록을 갱신한다.
+     * @brief       Refreshes the list of windows currently displayed on screen.
      */
     void RefreshWindowList();
 
     /**
-     * @brief       갱신된 창 목록을 반환한다.
-     * @return      SWindowDesc 배열 참조 (RefreshWindowList() 이후 유효)
+     * @brief       Returns the refreshed window list.
+     * @return      Reference to the SWindowDesc array (valid after RefreshWindowList())
      */
     const std::vector<SWindowDesc>& GetWindowList() const
     {
@@ -90,11 +90,11 @@ public:
     }
 
 private:
-    std::unique_ptr<SImpl> m_stImpl;
+    std::unique_ptr<SImpl> m_stImpl;                 /**< Opaque implementation details (WinRT COM objects) */
 
-    ID3D11Device* m_pDevice;
-    HWND m_hTargetWnd;
-    bool m_bCapturing;
+    ID3D11Device* m_pDevice;                         /**< DirectX 11 device (not owned) */
+    HWND m_hTargetWnd;                               /**< Handle of the window currently being captured */
+    bool m_bCapturing;                               /**< Whether capture is currently active */
 
-    std::vector<SWindowDesc> m_arrWindows;
+    std::vector<SWindowDesc> m_arrWindows;           /**< List of windows enumerated by RefreshWindowList() */
 };

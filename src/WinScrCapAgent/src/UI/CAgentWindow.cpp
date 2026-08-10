@@ -1,3 +1,10 @@
+/**
+ * @file         CAgentWindow.cpp
+ * @author       eskeptor (yc.jeon)
+ * @date         2026-08-10
+ * @version      1.0.0
+ */
+
 #include <Windows.h>
 #include <d3d11.h>
 #include <cassert>
@@ -11,10 +18,10 @@
 #include "Agent/CAgentServer.h"
 
 CAgentWindow::CAgentWindow(ID3D11Device* pDevice,
-                            ID3D11DeviceContext* pDeviceContext,
-                            IDXGISwapChain* pSwapChain,
-                            HWND hWnd,
-                            CAgentServer* pServer)
+    ID3D11DeviceContext* pDeviceContext,
+    IDXGISwapChain* pSwapChain,
+    HWND hWnd,
+    CAgentServer* pServer)
     : m_hWnd(hWnd)
     , m_pDevice(pDevice)
     , m_pDeviceContext(pDeviceContext)
@@ -41,22 +48,47 @@ bool CAgentWindow::Initialize()
     // RTV 생성
     ID3D11Texture2D* pBackBuf = nullptr;
     HRESULT hr = m_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuf));
-    if (FAILED(hr)) { return false; }
+    if (FAILED(hr))
+    {
+        return false;
+    }
     hr = m_pDevice->CreateRenderTargetView(pBackBuf, nullptr, &m_pRTV);
     pBackBuf->Release();
-    if (FAILED(hr)) { return false; }
+    if (FAILED(hr))
+    {
+        return false;
+    }
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
     ImGuiIO& refIo = ImGui::GetIO();
     refIo.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    // DockSpace 불필요 — 단일 창
+    const char* pszFonts[] =
+    {
+        "C:\\Windows\\Fonts\\NanumGothic.ttf",
+        "C:\\Windows\\Fonts\\malgun.ttf",
+        "C:\\Windows\\Fonts\\arial.ttf",
+    };
+    for (int i = 0; i < ARRAYSIZE(pszFonts); ++i)
+    {
+        ImFont* pFont = refIo.Fonts->AddFontFromFileTTF(pszFonts[i], 14.0f, nullptr, refIo.Fonts->GetGlyphRangesKorean());
+        if (pFont != nullptr)
+        {
+            break;
+        }
+    }
 
     ImGui::StyleColorsDark();
 
-    if (!ImGui_ImplWin32_Init(m_hWnd)) { return false; }
-    if (!ImGui_ImplDX11_Init(m_pDevice, m_pDeviceContext)) { return false; }
+    if (!ImGui_ImplWin32_Init(m_hWnd))
+    {
+        return false;
+    }
+    if (!ImGui_ImplDX11_Init(m_pDevice, m_pDeviceContext))
+    {
+        return false;
+    }
 
     m_bImGuiInitialized = true;
     return true;
@@ -84,48 +116,44 @@ bool CAgentWindow::Render(SAgentConfig& stConfig, const wchar_t* lpszIniPath)
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    // ── 메인 윈도우 ──────────────────────────────────────────────────
     const ImGuiViewport* pVP = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(pVP->WorkPos);
     ImGui::SetNextWindowSize(pVP->WorkSize);
-
     constexpr ImGuiWindowFlags WIN_FLAGS =
         ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
         ImGuiWindowFlags_MenuBar;
 
     ImGui::Begin("##Main", nullptr, WIN_FLAGS);
-
-    // ── 메뉴 바 ───────────────────────────────────────────────────────
-    if (ImGui::BeginMenuBar())
     {
-        if (ImGui::BeginMenu("Settings"))
+        if (ImGui::BeginMenuBar())
         {
-            if (ImGui::MenuItem("Configure..."))
+            if (ImGui::BeginMenu("Settings"))
             {
-                m_stEditConfig = stConfig;
-                strncpy_s(m_szEditPassword, stConfig.szPassword, _TRUNCATE);
-                m_bOpenSettings = true;
+                if (ImGui::MenuItem("Configure..."))
+                {
+                    m_stEditConfig = stConfig;
+                    strncpy_s(m_szEditPassword, stConfig.szPassword, _TRUNCATE);
+                    m_bOpenSettings = true;
+                }
+                ImGui::EndMenu();
             }
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Exit"))
-        {
-            if (ImGui::MenuItem("Exit Application"))
+            if (ImGui::BeginMenu("Exit"))
             {
-                m_bExitRequested = true;
+                if (ImGui::MenuItem("Exit Application"))
+                {
+                    m_bExitRequested = true;
+                }
+                ImGui::EndMenu();
             }
-            ImGui::EndMenu();
+            ImGui::EndMenuBar();
         }
-        ImGui::EndMenuBar();
+
+        RenderMainBody(stConfig);
+        RenderSettingsDialog(stConfig, lpszIniPath);
     }
-
-    RenderMainBody(stConfig);
-    RenderSettingsDialog(stConfig, lpszIniPath);
-
     ImGui::End();
 
-    // ── 렌더링 ───────────────────────────────────────────────────────
     ImGui::Render();
 
     constexpr float ARR_CLEAR[4] = { 0.1f, 0.1f, 0.1f, 1.0f };
@@ -165,13 +193,11 @@ void CAgentWindow::RenderMainBody(const SAgentConfig& stConfig)
     if (bConnected)
     {
         const std::string strIP = m_pServer->GetClientIP();
-        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f),
-            "Status: Connected  [%s]", strIP.c_str());
+        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "Status: Connected  [%s]", strIP.c_str());
     }
     else if (m_pServer->IsRunning())
     {
-        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.2f, 1.0f),
-            "Status: Waiting for connection...");
+        ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.2f, 1.0f), "Status: Waiting for connection...");
     }
     else
     {
@@ -207,15 +233,14 @@ void CAgentWindow::RenderSettingsDialog(SAgentConfig& stConfig, const wchar_t* l
         ImGui::AlignTextToFramePadding();
         ImGui::Text("Password"); ImGui::SameLine();
         ImGui::SetNextItemWidth(-1.0f);
-        ImGui::InputText("##Pwd", m_szEditPassword, sizeof(m_szEditPassword),
-            ImGuiInputTextFlags_Password);
+        ImGui::InputText("##Pwd", m_szEditPassword, sizeof(m_szEditPassword), ImGuiInputTextFlags_Password);
 
         ImGui::AlignTextToFramePadding();
         ImGui::Text("FPS     "); ImGui::SameLine();
         ImGui::SetNextItemWidth(-1.0f);
         if (ImGui::InputInt("##Fps", &m_stEditConfig.Fps))
         {
-            m_stEditConfig.Fps = (m_stEditConfig.Fps < 1)  ? 1  : m_stEditConfig.Fps;
+            m_stEditConfig.Fps = (m_stEditConfig.Fps < 1) ? 1 : m_stEditConfig.Fps;
             m_stEditConfig.Fps = (m_stEditConfig.Fps > 60) ? 60 : m_stEditConfig.Fps;
         }
 
@@ -224,7 +249,7 @@ void CAgentWindow::RenderSettingsDialog(SAgentConfig& stConfig, const wchar_t* l
         ImGui::SetNextItemWidth(-1.0f);
         if (ImGui::InputInt("##Crf", &m_stEditConfig.Crf))
         {
-            m_stEditConfig.Crf = (m_stEditConfig.Crf < 0)  ? 0  : m_stEditConfig.Crf;
+            m_stEditConfig.Crf = (m_stEditConfig.Crf < 0) ? 0 : m_stEditConfig.Crf;
             m_stEditConfig.Crf = (m_stEditConfig.Crf > 51) ? 51 : m_stEditConfig.Crf;
         }
 
@@ -233,7 +258,10 @@ void CAgentWindow::RenderSettingsDialog(SAgentConfig& stConfig, const wchar_t* l
         ImGui::SetNextItemWidth(-1.0f);
         if (ImGui::InputInt("##Mon", &m_stEditConfig.MonitorIndex))
         {
-            if (m_stEditConfig.MonitorIndex < 0) { m_stEditConfig.MonitorIndex = 0; }
+            if (m_stEditConfig.MonitorIndex < 0)
+            {
+                m_stEditConfig.MonitorIndex = 0;
+            }
         }
 
         ImGui::Spacing();
