@@ -151,6 +151,20 @@ WinScrCap/
 3. Open **Settings** to configure port, password, FPS, CRF, and monitor index
 4. The agent listens for an incoming connection from WinScrCap
 
+The agent returns to the listening state when WinScrCap disconnects, even if the
+captured desktop is idle. Unresponsive peers and stalled socket transfers time out
+after 10 seconds; agent shutdown cancels socket waits without waiting for that timeout.
+
+Agent connection regression tests (MSVC and Windows SDK required; no GPU or FFmpeg required):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\WinScrCapAgent\tests\RunTests.ps1
+```
+
+These exercise the real TCP worker with deterministic capture/encoder substitutes:
+idle disconnect/reset and reconnect, fragmented Stop/Pong packets, heartbeat timeout,
+stalled transmission timeout, and shutdown during authentication or a blocked send.
+
 ---
 
 ## Remote Capture Protocol

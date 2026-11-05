@@ -1,7 +1,7 @@
 /**
  * @file         CAgentServer.cpp
  * @author       eskeptor (yc.jeon)
- * @date         2026-08-10
+ * @date         2026-11-05
  * @version      1.0.0
  */
 
@@ -38,6 +38,15 @@ namespace
     constexpr uint8_t  CTRL_STOP = 0x03;
     constexpr int32_t  PING_INTERVAL_SEC = 5;
     constexpr int32_t  TIMEOUT_SEC = 10;
+
+    int32_t WaitForSocket(SOCKET hSock, bool bWrite)
+    {
+        fd_set stSet{};
+        FD_ZERO(&stSet);
+        FD_SET(hSock, &stSet);
+        timeval stTimeout{ 0, 100000 };
+        return select(0, bWrite ? nullptr : &stSet, bWrite ? &stSet : nullptr, nullptr, &stTimeout);
+    }
 }
 
 CAgentServer::CAgentServer()
@@ -121,16 +130,16 @@ bool CAgentServer::Initialize(uint16_t nPort, const char* pszPassword, CAgentCap
 void CAgentServer::Shutdown()
 {
     m_bRunning = false;
-    if (m_hListenSocket != INVALID_SOCKET)
-    {
-        closesocket(m_hListenSocket);
-        m_hListenSocket = INVALID_SOCKET;
-    }
     if (m_thrWorker.joinable())
     {
         m_thrWorker.join();
     }
-    WSACleanup();
+    if (m_hListenSocket != INVALID_SOCKET)
+    {
+        closesocket(m_hListenSocket);
+        m_hListenSocket = INVALID_SOCKET;
+        WSACleanup();
+    }
     m_bConnected = false;
 }
 
@@ -140,7 +149,7 @@ void CAgentServer::ThrWorker()
 
     while (m_bRunning.load())
     {
-        // ── 1. 클라이언트 연결 대기 (100ms 타임아웃으로 폴링) ──────────
+        // ── 클라이언트 연결 대기 (100ms 타임아웃으로 폴링)
         fd_set stReadSet{};
         FD_ZERO(&stReadSet);
         FD_SET(m_hListenSocket, &stReadSet);
@@ -164,32 +173,36 @@ void CAgentServer::ThrWorker()
             continue;
         }
 
-        // 클라이언트 IP 저장
+        u_long nNonBlocking = 1;
+        if (ioctlsocket(hClient, FIONBIO, &nNonBlocking) == SOCKET_ERROR)
+        {
+            OutputDebugStringA("Agent: failed to enable nonblocking socket I/O.\n");
+            closesocket(hClient);
+            continue;
+        }
+
+        // 핸드셰이크
+        if (!DoHandshake(hClient))
+        {
+            OutputDebugStringA("Agent: handshake failed or cancelled.\n");
+            closesocket(hClient);
+            continue;
+        }
+
         char szClientIP[64] = {};
         inet_ntop(AF_INET, &stClientAddr.sin_addr, szClientIP, sizeof(szClientIP));
         {
             std::lock_guard<std::mutex> lk(m_mtxStatus);
             m_strClientIP = szClientIP;
         }
-
-        // 수신 타임아웃 설정
-        DWORD dwRecvTimeout = static_cast<DWORD>(TIMEOUT_SEC) * 1000UL;
-        setsockopt(hClient, SOL_SOCKET, SO_RCVTIMEO,
-            reinterpret_cast<const char*>(&dwRecvTimeout), sizeof(dwRecvTimeout));
-
-        // ── 2. 핸드셰이크 ──────────────────────────────────────────────
-        if (!DoHandshake(hClient))
-        {
-            closesocket(hClient);
-            continue;
-        }
-
         m_bConnected = true;
 
-        // ── 3. 캡처·인코딩·전송 루프 ───────────────────────────────────
-        //const int64_t TARGET_US = 1000000LL / static_cast<int64_t>(m_pEncoder->GetWidth() > 0 ? 30 : 30);
+        // 캡처·인코딩·전송 루프
         steady_clock::time_point tLast = steady_clock::now();
         steady_clock::time_point tLastPing = tLast;
+        steady_clock::time_point tLastPong = tLast;
+        uint8_t arrCtrl[5] = {};
+        int32_t nCtrlBytes = 0;
         bool bError = false;
 
         while (m_bRunning.load() &&
@@ -197,6 +210,40 @@ void CAgentServer::ThrWorker()
         {
             const steady_clock::time_point tNow = steady_clock::now();
             const int64_t nElapsedUs = duration_cast<microseconds>(tNow - tLast).count();
+            const int32_t nRcv = recv(hClient, reinterpret_cast<char*>(arrCtrl + nCtrlBytes),
+                static_cast<int32_t>(sizeof(arrCtrl)) - nCtrlBytes, 0);
+            if (nRcv == 0 || (nRcv == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK))
+            {
+                OutputDebugStringA("Agent: client disconnected (recv).\n");
+                break;
+            }
+            if (nRcv > 0)
+            {
+                nCtrlBytes += nRcv;
+                if (nCtrlBytes == static_cast<int32_t>(sizeof(arrCtrl)))
+                {
+                    uint32_t nCtrlMagic = 0;
+                    memcpy(&nCtrlMagic, arrCtrl, sizeof(nCtrlMagic));
+                    if (nCtrlMagic != PROTO_MAGIC_CTRL ||
+                        (arrCtrl[4] != CTRL_PONG && arrCtrl[4] != CTRL_STOP))
+                    {
+                        OutputDebugStringA("Agent: invalid control packet.\n");
+                        break;
+                    }
+                    if (arrCtrl[4] == CTRL_STOP)
+                    {
+                        OutputDebugStringA("Agent: client requested stop.\n");
+                        break;
+                    }
+                    tLastPong = tNow;
+                    nCtrlBytes = 0;
+                }
+            }
+            if (tNow - tLastPong >= seconds(TIMEOUT_SEC))
+            {
+                OutputDebugStringA("Agent: client heartbeat timed out.\n");
+                break;
+            }
 
             // Ping 전송
             const int64_t nPingSec = duration_cast<seconds>(tNow - tLastPing).count();
@@ -234,7 +281,7 @@ void CAgentServer::ThrWorker()
             const int64_t nTimestampUs =
                 duration_cast<microseconds>(tNow.time_since_epoch()).count();
 
-            m_pEncoder->EncodeFrame(
+            const bool bEncoded = m_pEncoder->EncodeFrame(
                 stBGRA.pData,
                 stBGRA.Stride,
                 nTimestampUs,
@@ -242,34 +289,16 @@ void CAgentServer::ThrWorker()
                 {
                     if (!bError)
                     {
-                        SendFramePacket(hClient, pData, nSize, nTimestampUs);
-                        // 전송 오류는 다음 반복에서 감지됨
+                        bError = !SendFramePacket(hClient, pData, nSize, nTimestampUs);
                     }
                 }
             );
 
             m_pCapture->ReleaseFrame();
-
-            // Pong 수신 확인 (논블로킹 peek)
-            fd_set stFd{};
-            FD_ZERO(&stFd);
-            FD_SET(hClient, &stFd);
-            timeval stZero{ 0, 0 };
-            if (select(0, &stFd, nullptr, nullptr, &stZero) > 0)
+            if (!bEncoded)
             {
-                uint8_t arrCtrl[5] = {};
-                const int32_t nRcv = recv(hClient, reinterpret_cast<char*>(arrCtrl), sizeof(arrCtrl), 0);
-                if (nRcv <= 0)
-                {
-                    bError = true;
-                }
-                // CTRL_STOP 수신 시 정상 종료
-                else if (nRcv >= 5 &&
-                    *reinterpret_cast<const uint32_t*>(arrCtrl) == PROTO_MAGIC_CTRL &&
-                    arrCtrl[4] == CTRL_STOP)
-                {
-                    bError = true;  // 클라이언트가 요청한 종료
-                }
+                OutputDebugStringA("Agent: frame encoding failed.\n");
+                bError = true;
             }
         }
 
@@ -286,9 +315,13 @@ bool CAgentServer::DoHandshake(SOCKET hClient)
 {
     // Server → Client: magic(4) + version(1) + nonce(16)
     uint8_t arrNonce[16] = {};
-    BCryptGenRandom(nullptr, arrNonce, static_cast<ULONG>(sizeof(arrNonce)), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+    NTSTATUS sts = BCryptGenRandom(nullptr, arrNonce, static_cast<ULONG>(sizeof(arrNonce)), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+    if (!NT_SUCCESS(sts))
+    {
+        return false;
+    }
 
-    const uint32_t nMagic = PROTO_MAGIC_HELLO;
+    uint32_t nMagic = PROTO_MAGIC_HELLO;
     if (!SendAll(hClient, reinterpret_cast<const uint8_t*>(&nMagic), 4))
     {
         return false;
@@ -351,13 +384,13 @@ bool CAgentServer::DoHandshake(SOCKET hClient)
     return true;
 }
 
-void CAgentServer::SendFramePacket(SOCKET hClient, const uint8_t* pData, int32_t nSize, int64_t nTimestampUs)
+bool CAgentServer::SendFramePacket(SOCKET hClient, const uint8_t* pData, int32_t nSize, int64_t nTimestampUs)
 {
     const uint32_t nMagic = PROTO_MAGIC_FRAME;
-    SendAll(hClient, reinterpret_cast<const uint8_t*>(&nMagic), 4);
-    SendAll(hClient, reinterpret_cast<const uint8_t*>(&nSize), 4);
-    SendAll(hClient, reinterpret_cast<const uint8_t*>(&nTimestampUs), 8);
-    SendAll(hClient, pData, nSize);
+    return SendAll(hClient, reinterpret_cast<const uint8_t*>(&nMagic), 4) &&
+        SendAll(hClient, reinterpret_cast<const uint8_t*>(&nSize), 4) &&
+        SendAll(hClient, reinterpret_cast<const uint8_t*>(&nTimestampUs), 8) &&
+        SendAll(hClient, pData, nSize);
 }
 
 bool CAgentServer::ComputeAuthHash(const char* pszPassword, const uint8_t pNonce[16], uint8_t pOutHash[32])
@@ -398,12 +431,30 @@ bool CAgentServer::ComputeAuthHash(const char* pszPassword, const uint8_t pNonce
 
 bool CAgentServer::SendAll(SOCKET hSock, const uint8_t* pData, int32_t nLen)
 {
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(TIMEOUT_SEC);
     int32_t nSent = 0;
     while (nSent < nLen)
     {
-        const int32_t nResult = send(hSock, reinterpret_cast<const char*>(pData + nSent), nLen - nSent, 0);
-        if (nResult == SOCKET_ERROR)
+        if (!m_bRunning.load())
         {
+            return false;
+        }
+        if (std::chrono::steady_clock::now() >= tDeadline)
+        {
+            OutputDebugStringA("Agent: send timed out.\n");
+            return false;
+        }
+        const int32_t nResult = send(hSock, reinterpret_cast<const char*>(pData + nSent), nLen - nSent, 0);
+        if (nResult == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK)
+        {
+            if (WaitForSocket(hSock, true) != SOCKET_ERROR)
+            {
+                continue;
+            }
+        }
+        if (nResult <= 0)
+        {
+            OutputDebugStringA("Agent: client disconnected (send).\n");
             return false;
         }
         nSent += nResult;
@@ -413,12 +464,30 @@ bool CAgentServer::SendAll(SOCKET hSock, const uint8_t* pData, int32_t nLen)
 
 bool CAgentServer::RecvAll(SOCKET hSock, uint8_t* pData, int32_t nLen)
 {
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(TIMEOUT_SEC);
     int32_t nRecv = 0;
     while (nRecv < nLen)
     {
+        if (!m_bRunning.load())
+        {
+            return false;
+        }
+        if (std::chrono::steady_clock::now() >= tDeadline)
+        {
+            OutputDebugStringA("Agent: receive timed out.\n");
+            return false;
+        }
         const int32_t nResult = recv(hSock, reinterpret_cast<char*>(pData + nRecv), nLen - nRecv, 0);
+        if (nResult == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK)
+        {
+            if (WaitForSocket(hSock, false) != SOCKET_ERROR)
+            {
+                continue;
+            }
+        }
         if (nResult <= 0)
         {
+            OutputDebugStringA("Agent: client disconnected (receive).\n");
             return false;
         }
         nRecv += nResult;

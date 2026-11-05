@@ -1,7 +1,7 @@
 /**
  * @file         CAgentServer.h
  * @author       eskeptor (yc.jeon)
- * @date         2026-08-08
+ * @date         2026-11-05
  * @version      1.0.0
  * @brief        Definition of the agent-side TCP server that streams captured frames to a remote client
  */
@@ -108,7 +108,7 @@ private:
      * @param[in]   nLen    Number of bytes to send
      * @return      Whether all bytes were sent successfully
      */
-    static bool SendAll(SOCKET hSock, const uint8_t* pData, int32_t nLen);
+    bool SendAll(SOCKET hSock, const uint8_t* pData, int32_t nLen);
 
     /**
      * @brief       Receives the exact number of requested bytes from the socket, looping until complete.
@@ -117,7 +117,7 @@ private:
      * @param[in]   nLen    Number of bytes to receive
      * @return      Whether all bytes were received successfully
      */
-    static bool RecvAll(SOCKET hSock, uint8_t* pData, int32_t nLen);
+    bool RecvAll(SOCKET hSock, uint8_t* pData, int32_t nLen);
 
     /**
      * @brief       Performs the challenge-response authentication handshake with a connected client.
@@ -132,8 +132,9 @@ private:
      * @param[in]   pData           Encoded H.264 packet data
      * @param[in]   nSize           Size of pData in bytes
      * @param[in]   nTimestampUs    Frame timestamp (microseconds)
+     * @return      Whether the complete frame packet was sent successfully
      */
-    void SendFramePacket(SOCKET hClient, const uint8_t* pData, int32_t nSize, int64_t nTimestampUs);
+    bool SendFramePacket(SOCKET hClient, const uint8_t* pData, int32_t nSize, int64_t nTimestampUs);
 
 private:
     SOCKET m_hListenSocket;              /**< Listening TCP socket */
